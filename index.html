@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pferdehof Abenteuer Deluxe</title>
+    
+    <!-- PWA Verknüpfungen -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#7BC043">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #2c3e50;
+            font-family: 'Fredoka', sans-serif;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* --- UI Layer --- */
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            color: #fff;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+            font-size: 18px;
+            z-index: 10;
+        }
+
+        /* Oben Links: Stats & Energie */
+        .hud-left {
+            position: absolute; top: 10px; left: 10px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+
+        .hud-row { display: flex; align-items: center; gap: 10px; }
+        
+        .hud-item {
+            background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 25px;
+            display: inline-flex; align-items: center; gap: 8px;
+            backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        /* Energie Balken */
+        #stamina-container {
+            width: 150px; height: 10px; background: rgba(0,0,0,0.5);
+            border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3);
+            margin-top: 5px;
+        }
+        #stamina-bar {
+            width: 100%; height: 100%; background: #f1c40f; transition: width 0.1s;
+        }
+
+        /* Oben Rechts: Buttons */
+        .hud-right {
+            position: absolute; top: 10px; right: 10px;
+            display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+            pointer-events: auto;
+        }
+
+        /* Oben Mitte: Quest */
+        #quest-box {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95); padding: 10px 20px;
+            border-radius: 15px; border-left: 5px solid #FFD700; color: #333;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-size: 18px; max-width: 300px;
+            pointer-events: none; display: none; text-shadow: none; text-align: center;
+        }
+
+        /* Buttons */
+        button {
+            pointer-events: auto; border: none; border-radius: 50px;
+            font-family: 'Fredoka', sans-serif; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s;
+        }
+        button:active { transform: translateY(4px); box-shadow: none; }
+
+        .icon-btn {
+            width: 45px; height: 45px; font-size: 24px;
+            display: flex; justify-content: center; align-items: center; color: white;
+        }
+        .btn-blue { background: #3498db; }
+        .btn-purple { background: #9b59b6; }
+        .btn-orange { background: #e67e22; }
+        .btn-green { background: #2ecc71; }
+        
+        #drop-btn { background: #e74c3c; color: white; padding: 8px 15px; display: none; font-size: 16px; }
+
+        /* Mobile Action Buttons (Unten Rechts) */
+        #mobile-actions {
+            position: absolute; bottom: 30px; right: 30px;
+            display: flex; gap: 20px; pointer-events: auto;
+        }
+        .action-circle {
+            width: 70px; height: 70px; border-radius: 50%;
+            background: rgba(255,255,255,0.3); border: 2px solid white;
+            color: white; font-size: 30px; display: flex; justify-content: center; align-items: center;
+        }
+        .action-circle:active { background: rgba(255,255,255,0.6); }
+
+        /* Screens & Modals */
+        #level-screen, #shop-modal, #customize-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            display: none; justify-content: center; align-items: center;
+            color: white; z-index: 100; text-align: center; flex-direction: column;
+        }
+        #level-screen { display: flex; } /* Start sichtbar */
+
+        .modal-content {
+            background: #fff; color: #333; padding: 20px; border-radius: 20px;
+            max-width: 90%; width: 400px; max-height: 80%; overflow-y: auto;
+            text-shadow: none; position: relative;
+        }
+        .modal-close {
+            position: absolute; top: 10px; right: 15px; background: #e74c3c;
+            color: white; width: 30px; height: 30px; line-height: 30px; border-radius: 50%; cursor: pointer;
+        }
+        
+        .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .shop-item {
+            border: 2px solid #eee; border-radius: 10px; padding: 10px; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .shop-item:hover { background: #f9f9f9; border-color: #3498db; }
+        .shop-item.owned { opacity: 0.5; cursor: default; background: #e0e0e0; }
+
+        .color-picker { display: flex; gap: 10px; justify-content: center; margin: 15px 0; flex-wrap: wrap; }
+        .color-swatch { 
+            width: 40px; height: 40px; border-radius: 50%; border: 3px solid #eee; 
+            cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+            transition: transform 0.1s;
+        }
+        /* Schwarzer Rahmen für ausgewählte Farbe */
+        .color-swatch.selected { 
+            border: 4px solid #000; 
+            transform: scale(1.15); 
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        #joystick-touch-zone {
+            position: absolute; bottom: 30px; left: 30px;
+            width: 160px; height: 160px; z-index: 20; border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="hud-left">
+            <div class="hud-item"><span>📅</span> <span id="clock-display">12:00</span></div>
+            <div class="hud-row">
+                <div class="hud-item"><span>🎒</span> <span id="inventory-display">Leer</span></div>
+                <button id="drop-btn" onclick="dropItem()">❌</button>
+            </div>
+            <div class="hud-item"><span>⭐</span> <span id="star-display">0</span></div>
+            <div id="stamina-container"><div id="stamina-bar"></div></div>
+        </div>
+
+        <div id="quest-box">
+            <strong>Pferdewunsch:</strong><br>
+            <span id="quest-text">...</span>
+        </div>
+
+        <div class="hud-right">
+            <button id="sound-btn" class="icon-btn btn-purple" onclick="toggleSound()">🔊</button>
+            <button class="icon-btn btn-orange" onclick="openCustomize()">🎨</button>
+            <button class="icon-btn btn-green" onclick="openShop()">🛒</button>
+            <button class="icon-btn btn-blue" onclick="changeZoom(0.1)">➕</button>
+            <button class="icon-btn btn-blue" onclick="changeZoom(-0.1)">➖</button>
+        </div>
+
+        <div id="mobile-actions" style="display:none;">
+            <button class="action-circle" onclick="playerJump()">🦘</button>
+        </div>
+    </div>
+
+    <!-- Start / Level Screen -->
+    <div id="level-screen">
+        <h1 style="color:#FFD700; font-size:40px; margin-bottom:10px;">Pferdehof Deluxe</h1>
+        <p>Wetter, Fohlen, Springen & Dekorieren!</p>
+        <div id="controls-hint" style="margin:20px 0; color:#ddd;"></div>
+        <button onclick="startGame()" style="background:#27ae60; color:white; padding:15px 50px; font-size:24px;">Losreiten</button>
+    </div>
+
+    <!-- Shop Modal -->
+    <div id="shop-modal">
+        <div class="modal-content">
+            <div class="modal-close" onclick="closeModals()">×</div>
+            <h2>Hof-Laden</h2>
+            <p>Sterne: <span id="shop-stars">0</span></p>
+            <div class="shop-grid" id="shop-grid">
+                <!-- Items per JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Customize Modal -->
+    <div id="customize-modal">
+        <div class="modal-content">
+            <div class="modal-close" onclick="closeModals()">×</div>
+            <h2>Dein Pferd</h2>
+            <p>Fellfarbe</p>
+            <div class="color-picker" id="coat-colors"></div>
+            <p>Mähnenfarbe</p>
+            <div class="color-picker" id="mane-colors"></div>
+            <button onclick="closeModals()" style="background:#2ecc71; color:white; padding:10px 30px; margin-top:10px;">Fertig</button>
+        </div>
+    </div>
+
+    <div id="joystick-touch-zone"></div>
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+    // --- PWA Service Worker ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(e => console.log(e)));
+    }
+
+    // --- Audio ---
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const soundCtx = new AudioContext();
+    let soundEnabled = true;
+
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        document.getElementById('sound-btn').innerText = soundEnabled ? "🔊" : "🔇";
+        if(soundEnabled && soundCtx.state === 'suspended') soundCtx.resume();
+    }
+    const Sound = {
+        playTone: (f, t, d, v=0.1) => { if(!soundEnabled) return; const o=soundCtx.createOscillator(), g=soundCtx.createGain(); o.type=t; o.frequency.setValueAtTime(f, soundCtx.currentTime); g.gain.setValueAtTime(v, soundCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, soundCtx.currentTime+d); o.connect(g); g.connect(soundCtx.destination); o.start(); o.stop(soundCtx.currentTime+d); },
+        playNoise: (d) => { if(!soundEnabled) return; const b=soundCtx.createBuffer(1, soundCtx.sampleRate*d, soundCtx.sampleRate), dt=b.getChannelData(0); for(let i=0;i<b.length;i++) dt[i]=Math.random()*2-1; const n=soundCtx.createBufferSource(); n.buffer=b; const g=soundCtx.createGain(); g.gain.setValueAtTime(0.05, soundCtx.currentTime); const f=soundCtx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=150; n.connect(f); f.connect(g); g.connect(soundCtx.destination); n.start(); },
+        playJump: () => Sound.playTone(300, 'sine', 0.3, 0.2),
+        playPop: () => Sound.playTone(400, 'triangle', 0.1, 0.1),
+        playSuccess: () => { Sound.playTone(523, 'sine', 0.2); setTimeout(()=>Sound.playTone(659, 'sine', 0.4), 100); }
+    };
+
+    // --- Game Setup ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const WORLD_W = 2500, WORLD_H = 2000;
+
+    // Assets
+    const itemTypes = {
+        apple: { name: "Apfel", emoji: "🍎", color: "#ff4d4d" },
+        carrot: { name: "Möhre", emoji: "🥕", color: "#ffa500" },
+        water: { name: "Wasser", emoji: "💧", color: "#3498db" },
+        brush: { name: "Bürste", emoji: "🧹", color: "#95a5a6" },
+        hay: { name: "Heu", emoji: "🌾", color: "#f1c40f" }
+    };
+    
+    const seasons = [
+        { name: "Frühling", bg: "#7BC043", treeColor: "#2ecc71", riverColor: "#4fc3f7" },
+        { name: "Sommer", bg: "#6ab04c", treeColor: "#27ae60", riverColor: "#29b6f6" },
+        { name: "Herbst", bg: "#e1b12c", treeColor: "#e67e22", riverColor: "#81d4fa" },
+        { name: "Winter", bg: "#dfe6e9", treeColor: "#b2bec3", riverColor: "#b3e5fc" }
+    ];
+
+    const shopItems = [
+        { id: 'flower_red', name: 'Rote Blumen', cost: 2, type: 'deco', emoji: '🌹' },
+        { id: 'flower_blue', name: 'Blaue Blumen', cost: 2, type: 'deco', emoji: '💠' },
+        { id: 'fountain', name: 'Brunnen', cost: 5, type: 'deco', emoji: '⛲' },
+        { id: 'bench', name: 'Bank', cost: 3, type: 'deco', emoji: '🪑' }
+    ];
+
+    // State
+    let gameState = {
+        running: false, level: 0, stars: 0,
+        time: 0, dayDuration: 12000, 
+        weather: 'sunny', weatherTimer: 0,
+        entities: { horses: [], items: [], decorations: [], dogs: [], ducks: [] },
+        terrain: { riverPoints: [], fields: [], trees: [], grassTufts: [], obstacles: [] },
+        inventory: null, particles: [], footprints: [],
+        camX: 0, camY: 0, zoom: 1.0,
+        player: { 
+            x: 1250, y: 1000, z: 0, vz: 0, vx: 0, vy: 0, 
+            speed: 6, maxStamina: 100, stamina: 100, 
+            color: '#654321', maneColor: '#2c2c2c', flip: false, animFrame: 0 
+        },
+        quest: { horse: null },
+        purchased: []
+    };
+
+    let joy = { active: false, baseX: 100, baseY: 0, stickX: 0, stickY: 0, dx: 0, dy: 0, radius: 50 };
+    const keys = { w:false, a:false, s:false, d:false, Shift:false, Space:false };
+
+    // --- Init ---
+    function initUI() {
+        const hint = document.getElementById('controls-hint');
+        const mobActions = document.getElementById('mobile-actions');
+        const joyZone = document.getElementById('joystick-touch-zone');
+        
+        if (!isTouchDevice) {
+            joyZone.style.display = 'none';
+            mobActions.style.display = 'none';
+            hint.innerHTML = "<b>WASD</b> Bewegen | <b>Shift</b> Sprinten<br><b>Leertaste</b> Springen | <b>Q</b> oder <b>X</b> Ablegen";
+        } else {
+            mobActions.style.display = 'flex';
+            hint.innerHTML = "Joystick zum Bewegen<br>Buttons für Aktionen";
+        }
+        initShop();
+    }
+
+    function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        joy.baseY = canvas.height - 110; 
+        if(!joy.active) { joy.stickX = joy.baseX; joy.stickY = joy.baseY; }
+    }
+
+    function startGame() {
+        document.getElementById('level-screen').style.display = 'none';
+        if(soundCtx.state === 'suspended') soundCtx.resume();
+        generateWorld();
+        gameState.running = true;
+        loop();
+    }
+
+    function generateWorld() {
+        gameState.time = 0.2; 
+        gameState.stars = 0;
+        gameState.entities.horses = [];
+        gameState.entities.items = [];
+        gameState.entities.dogs = [{x: 1300, y: 1050, vx:0, vy:0, flip: false, anim:0, state:'follow', timer: 500, tx:0, ty:0}];
+        gameState.entities.ducks = [];
+        
+        // Terrain
+        gameState.terrain.riverPoints = [];
+        for(let x=0; x<=WORLD_W; x+=40) gameState.terrain.riverPoints.push({x:x, y: (WORLD_H/2) + Math.sin(x/400)*300});
+        
+        gameState.terrain.trees = [];
+        gameState.terrain.obstacles = [];
+        
+        // Bäume generieren (Normaler Wald + Dichte Randbepflanzung)
+        for(let i=0; i<150; i++) {
+            // Zufällige Positionen für den normalen Wald
+            let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
+            
+            // Logik für Randbepflanzung (Natürliche Grenze)
+            // Wenn wir nahe am Rand sind (0-150px oder WORLD-150px), setzen wir garantiert Bäume
+            if (i < 80) { // Die ersten 80 sind Random
+                 // Normaler Zufall
+            } else {
+                // Die restlichen forcieren wir an den Rand
+                if (Math.random() > 0.5) {
+                    x = Math.random() < 0.5 ? Math.random() * 100 : WORLD_W - Math.random() * 100;
+                    y = Math.random() * WORLD_H;
+                } else {
+                    x = Math.random() * WORLD_W;
+                    y = Math.random() < 0.5 ? Math.random() * 100 : WORLD_H - Math.random() * 100;
+                }
+            }
+
+            if(!isNearRiver(x,y,80)) {
+                // Hindernis hinzufügen, damit man nicht durchläuft
+                gameState.terrain.obstacles.push({x:x-15, y:y-10, w:30, h:20}); 
+                gameState.terrain.trees.push({x:x, y:y, size: 60+Math.random()*40, apples:[]});
+            }
+        }
+        
+        // Zusätzliche Hindernisse
+        for(let i=0; i<15; i++) {
+            let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
+            if(!isNearRiver(x,y,100)) gameState.terrain.obstacles.push({x:x, y:y, w:80, h:20});
+        }
+
+        for(let i=0; i<5; i++) {
+            let pt = gameState.terrain.riverPoints[Math.floor(Math.random()*gameState.terrain.riverPoints.length)];
+            gameState.entities.ducks.push({x: pt.x, y: pt.y, offset: Math.random()*100});
+        }
+
+        const colors = ['#3e2723', '#795548', '#a1887f', '#d7ccc8', '#eeeeee'];
+        for(let i=0; i<6; i++) {
+            let px = Math.random()*WORLD_W, py = Math.random()*WORLD_H;
+            // Pferde nicht im Randbereich spawnen
+            px = Math.max(200, Math.min(WORLD_W-200, px));
+            py = Math.max(200, Math.min(WORLD_H-200, py));
+            
+            if(isNearRiver(px,py,100)) continue;
+            let horse = {
+                id: i, x: px, y: py, color: colors[i%colors.length], flip: Math.random()>0.5,
+                state: 'idle', timer: 0, tx: px, ty: py, anim: 0,
+                want: Object.values(itemTypes)[Math.floor(Math.random()*5)], satisfied: false
+            };
+            gameState.entities.horses.push(horse);
+            if(Math.random() > 0.7) {
+                gameState.entities.horses.push({
+                    isFoal: true, parent: horse, x: px+20, y: py+20, color: horse.color, 
+                    flip: horse.flip, anim: 0
+                });
+            }
+        }
+
+        // Initiales Quest setzen
+        const needyHorse = gameState.entities.horses.find(h => !h.isFoal && !h.satisfied);
+        if(needyHorse) {
+            gameState.quest.horse = needyHorse;
+        }
+
+        spawnItems();
+        updateUI();
+        updateQuestUI(); // Quest Box direkt anzeigen
+    }
+
+    function spawnItems() {
+        const spawn = (t, n) => {
+            for(let i=0; i<n; i++) {
+                let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
+                if(!isNearRiver(x,y,50)) gameState.entities.items.push({x,y,type:t});
+            }
+        }
+        spawn(itemTypes.water, 5); spawn(itemTypes.carrot, 5); spawn(itemTypes.apple, 5);
+        spawn(itemTypes.hay, 5); spawn(itemTypes.brush, 4);
+    }
+
+    // --- Logic Loop ---
+    function loop() {
+        if(!gameState.running) return;
+        
+        gameState.time += 1/gameState.dayDuration;
+        if(gameState.time >= 1) gameState.time = 0;
+        
+        gameState.weatherTimer++;
+        if(gameState.weatherTimer > 3000) {
+            gameState.weatherTimer = 0;
+            const r = Math.random();
+            if(r < 0.6) gameState.weather = 'sunny'; else if(r < 0.9) gameState.weather = 'rain'; else gameState.weather = 'snow';
+        }
+
+        handlePlayerMovement();
+        updateHorses();
+        updateDog();
+        updateDucks();
+        checkCollisions();
+
+        let tx = gameState.player.x - canvas.width/2;
+        let ty = gameState.player.y - canvas.height/2;
+        gameState.camX += (tx - gameState.camX) * 0.1;
+        gameState.camY += (ty - gameState.camY) * 0.1;
+
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    function handlePlayerMovement() {
+        const p = gameState.player;
+        let dx = 0, dy = 0;
+        
+        if(joy.active) { dx = joy.dx; dy = joy.dy; }
+        else {
+            if(keys.w) dy = -1; if(keys.s) dy = 1; if(keys.a) dx = -1; if(keys.d) dx = 1;
+        }
+
+        let speed = p.speed;
+        let isSprinting = (keys.Shift || (joy.active && Math.hypot(joy.dx,joy.dy) > 0.9));
+        if(isSprinting && p.stamina > 0 && (dx!=0 || dy!=0)) {
+            speed *= 1.6; p.stamina -= 0.5;
+        } else { if(p.stamina < p.maxStamina) p.stamina += 0.2; }
+
+        if(p.z > 0 || p.vz !== 0) {
+            p.z += p.vz; p.vz -= 0.8; 
+            if(p.z <= 0) { p.z = 0; p.vz = 0; Sound.playNoise(0.1); }
+        }
+
+        if(dx !== 0 || dy !== 0) {
+            let len = Math.hypot(dx, dy); if(len > 1) { dx/=len; dy/=len; }
+            p.x += dx * speed; p.y += dy * speed;
+            p.flip = dx < 0; p.animFrame += speed * 0.03;
+
+            if(Math.floor(p.animFrame*10) % 5 === 0 && p.z === 0) {
+                gameState.footprints.push({x: p.x, y: p.y, age: 100});
+            }
+            if(Math.floor(p.animFrame*5) % 10 === 0 && p.z === 0) Sound.playNoise(0.05);
+
+        } else { p.animFrame = 0; }
+
+        // Hard clamp nur noch als Fallback, falls man sich durch Bäume glitcht
+        p.x = Math.max(50, Math.min(WORLD_W-50, p.x));
+        p.y = Math.max(50, Math.min(WORLD_H-50, p.y));
+
+        if(p.z < 10) {
+            for(let o of gameState.terrain.obstacles) {
+                if(p.x > o.x - 20 && p.x < o.x + o.w + 20 && p.y > o.y - 10 && p.y < o.y + o.h + 10) {
+                    p.x -= dx * speed * 1.5; p.y -= dy * speed * 1.5;
+                }
+            }
+        }
+    }
+
+    function playerJump() { if(gameState.player.z === 0) { gameState.player.vz = 12; Sound.playJump(); } }
+
+    function dropItem() {
+        if(!gameState.inventory) return;
+        Sound.playPop(); const p = gameState.player;
+        let dx = p.flip ? 60 : -60;
+        gameState.entities.items.push({ x: p.x + dx, y: p.y, type: gameState.inventory });
+        gameState.inventory = null; createParticles(p.x, p.y, "💨", 5); updateUI();
+        if(gameState.quest.horse) updateQuestUI();
+    }
+
+    function updateHorses() {
+        for(let h of gameState.entities.horses) {
+            if(h.isFoal) {
+                let dist = Math.hypot(h.x - h.parent.x, h.y - h.parent.y);
+                if(dist > 60) {
+                    let angle = Math.atan2(h.parent.y - h.y, h.parent.x - h.x);
+                    h.x += Math.cos(angle) * 3; h.y += Math.sin(angle) * 3; h.anim += 0.2; h.flip = Math.cos(angle) < 0;
+                } else h.anim = 0;
+            } else {
+                if(h.state === 'idle') {
+                    h.timer++;
+                    if(h.timer > 200) {
+                        h.state = 'walk'; h.tx = h.x + (Math.random()-0.5)*400; h.ty = h.y + (Math.random()-0.5)*400;
+                        h.tx = Math.max(50, Math.min(WORLD_W-50, h.tx)); h.ty = Math.max(50, Math.min(WORLD_H-50, h.ty));
+                    }
+                } else if(h.state === 'walk') {
+                    let dx = h.tx - h.x, dy = h.ty - h.y; let dist = Math.hypot(dx, dy);
+                    if(dist < 5) { h.state = 'idle'; h.timer = 0; h.anim = 0; }
+                    else { h.x += (dx/dist)*1.5; h.y += (dy/dist)*1.5; h.flip = dx < 0; h.anim += 0.1; }
+                }
+            }
+        }
+    }
+
+    function updateDog() {
+        let dog = gameState.entities.dogs[0];
+        
+        dog.timer--;
+        if(dog.timer <= 0) {
+            let r = Math.random();
+            if(r < 0.5) { dog.state = 'follow'; dog.timer = 500 + Math.random()*500; } 
+            else if (r < 0.8) { 
+                dog.state = 'wander'; dog.timer = 300 + Math.random()*300; 
+                dog.tx = Math.max(100, Math.min(WORLD_W-100, dog.x + (Math.random()-0.5)*800));
+                dog.ty = Math.max(100, Math.min(WORLD_H-100, dog.y + (Math.random()-0.5)*800));
+            } else { dog.state = 'idle'; dog.timer = 200 + Math.random()*200; }
+        }
+
+        let speed = 4.5;
+        let moving = false;
+        let tx = dog.x, ty = dog.y;
+
+        if(dog.state === 'follow') {
+            let dist = Math.hypot(dog.x - gameState.player.x, dog.y - gameState.player.y);
+            if(dist > 150) { tx = gameState.player.x; ty = gameState.player.y; moving = true; }
+        } else if (dog.state === 'wander') {
+            let dist = Math.hypot(dog.x - dog.tx, dog.y - dog.ty);
+            if(dist > 10) { tx = dog.tx; ty = dog.ty; moving = true; speed = 2.5; } 
+            else { dog.state = 'idle'; dog.timer = 100; }
+        }
+
+        if(moving) {
+            let angle = Math.atan2(ty - dog.y, tx - dog.x);
+            dog.x += Math.cos(angle) * speed;
+            dog.y += Math.sin(angle) * speed;
+            dog.anim += 0.3;
+            // Fix: Logik umgedreht
+            dog.flip = Math.cos(angle) > 0;
+        } else {
+            dog.anim = 0;
+        }
+    }
+
+    function updateDucks() {
+        for(let d of gameState.entities.ducks) { d.x += Math.sin((Date.now()/1000) + d.offset) * 0.5; }
+    }
+
+    function checkCollisions() {
+        const p = gameState.player;
+        if(!gameState.inventory) {
+            for(let i=0; i<gameState.entities.items.length; i++) {
+                let it = gameState.entities.items[i];
+                if(Math.hypot(p.x - it.x, p.y - it.y) < 40) {
+                    gameState.inventory = it.type; gameState.entities.items.splice(i, 1);
+                    Sound.playPop(); createParticles(p.x, p.y, "✨", 8);
+                    if(it.type.name === 'Apfel') p.stamina = p.maxStamina;
+                    updateUI();
+                    const needyHorse = gameState.entities.horses.find(h => !h.isFoal && !h.satisfied);
+                    if(needyHorse) { gameState.quest.horse = needyHorse; updateQuestUI(); }
+                    break;
+                }
+            }
+        }
+        if(gameState.quest.horse && !gameState.quest.horse.satisfied) {
+            let h = gameState.quest.horse;
+            if(Math.hypot(p.x - h.x, p.y - h.y) < 80) {
+                if(gameState.inventory && gameState.inventory.name === h.want.name) {
+                    h.satisfied = true; gameState.inventory = null; gameState.stars += 1;
+                    Sound.playSuccess(); createParticles(h.x, h.y, "❤️", 10);
+                    updateUI(); updateQuestUI();
+                    setTimeout(() => {
+                        const next = gameState.entities.horses.find(nh => !nh.isFoal && !nh.satisfied);
+                        gameState.quest.horse = next || null; updateQuestUI();
+                    }, 2000);
+                }
+            }
+        }
+    }
+
+    // --- Draw ---
+    function draw() {
+        const H = canvas.height;
+        let t = gameState.time; 
+        
+        // Hintergrund ist IMMER Gras/Schnee für den "Infinite World" Look
+        ctx.fillStyle = (gameState.weather==='snow') ? "#ecf0f1" : "#7BC043";
+        ctx.fillRect(0,0,canvas.width, canvas.height);
+
+        // Himmelsfarbe berechnen für Overlay
+        let skyOverlay = null;
+        let ambientLight = 0;
+
+        if(t < 0.2) { 
+            // Morgen: Gelb/Orange Tint
+            skyOverlay = ctx.createLinearGradient(0,0,0,H); 
+            skyOverlay.addColorStop(0, "rgba(135, 206, 235, 0.4)"); 
+            skyOverlay.addColorStop(1, "rgba(241, 196, 15, 0.2)"); 
+        } else if(t < 0.7) { 
+            // Tag: Fast kein Tint, nur leicht blau
+             skyOverlay = "rgba(135, 206, 235, 0.1)";
+        } else if(t < 0.8) { 
+            // Abend: Dunkelblau/Orange
+            skyOverlay = ctx.createLinearGradient(0,0,0,H); 
+            skyOverlay.addColorStop(0, "rgba(44, 62, 80, 0.4)"); 
+            skyOverlay.addColorStop(1, "rgba(230, 126, 34, 0.3)"); 
+            ambientLight = (t-0.7)*5; 
+        } else { 
+            // Nacht
+            ambientLight = 0.6;
+        }
+
+        ctx.save();
+        ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(gameState.zoom, gameState.zoom);
+        ctx.translate(-canvas.width/2, -canvas.height/2); ctx.translate(-gameState.camX, -gameState.camY);
+
+        // Weltinhalt zeichnen (kein fillRect für Boden mehr, da Screen filled ist)
+        
+        // Fußspuren
+        ctx.fillStyle = "rgba(0,0,0,0.1)";
+        for(let i=gameState.footprints.length-1; i>=0; i--) {
+            let fp = gameState.footprints[i]; fp.age -= 0.2;
+            if(fp.age <= 0) gameState.footprints.splice(i,1);
+            else { ctx.globalAlpha = fp.age/100 * 0.3; ctx.beginPath(); ctx.ellipse(fp.x, fp.y+45, 10, 5, 0, 0, Math.PI*2); ctx.fill(); }
+        }
+        ctx.globalAlpha = 1;
+
+        if(gameState.terrain.riverPoints.length>0) {
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.lineWidth = 140; ctx.strokeStyle = "#90A4AE"; 
+            ctx.beginPath(); gameState.terrain.riverPoints.forEach((p,i)=>i==0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
+            ctx.lineWidth = 120; ctx.strokeStyle = (gameState.weather==='snow') ? "#b3e5fc" : "#4fc3f7";
+            ctx.beginPath(); gameState.terrain.riverPoints.forEach((p,i)=>i==0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
+        }
+
+        if(gameState.weather !== 'snow') {
+            gameState.terrain.fields.forEach(f => {
+                ctx.fillStyle = "#8D6E63"; ctx.fillRect(f.x, f.y, f.w, f.h);
+                ctx.fillStyle = "#6D4C41"; for(let fy=f.y+20; fy<f.y+f.h; fy+=30) ctx.fillRect(f.x+10, fy, f.w-20, 10);
+            });
+        }
+
+        gameState.entities.decorations.forEach(d => { ctx.font = "40px Arial"; ctx.fillText(d.emoji, d.x, d.y); });
+        
+        ctx.globalAlpha = 1.0;
+        ctx.font = "20px Arial";
+        gameState.entities.ducks.forEach(d => ctx.fillText("🦆", d.x, d.y));
+
+        ctx.fillStyle = "#5d4037";
+        gameState.terrain.obstacles.forEach(o => {
+            ctx.beginPath(); ctx.roundRect(o.x, o.y, o.w, o.h, 10); ctx.fill();
+            ctx.fillStyle="rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.roundRect(o.x, o.y+5, o.w, o.h-10, 5); ctx.fill(); ctx.fillStyle="#5d4037";
+        });
+
+        ctx.font = "30px Arial"; ctx.textAlign = "center";
+        gameState.entities.items.forEach(it => {
+            ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.ellipse(it.x, it.y+10, 15, 6, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "black";
+            ctx.fillText(it.type.emoji, it.x, it.y + Math.sin(Date.now()/300)*5);
+        });
+
+        const renderList = [
+            ...gameState.entities.horses.map(h => ({...h, type:'horse'})),
+            ...gameState.entities.dogs.map(d => ({...d, type:'dog'})),
+            {...gameState.player, type:'player'}
+        ];
+        renderList.sort((a,b) => a.y - b.y);
+
+        renderList.forEach(obj => {
+            if(obj.type === 'horse') drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, false, obj.anim, obj.state==='walk', 0, obj.isFoal?0.6:1);
+            if(obj.type === 'dog') drawDog(ctx, obj);
+            if(obj.type === 'player') drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, true, obj.animFrame, (keys.w||keys.a||keys.s||keys.d||joy.active), obj.z, 1);
+        });
+
+        gameState.terrain.trees.forEach(t => drawTree(t));
+
+        ctx.font = "20px Arial";
+        for(let i=gameState.particles.length-1; i>=0; i--) {
+            let p = gameState.particles[i]; p.y -= 1; p.life -= 0.02;
+            ctx.globalAlpha = p.life; ctx.fillText(p.char, p.x, p.y);
+            if(p.life<=0) gameState.particles.splice(i,1);
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
+
+        // Overlays (Screen Space)
+        
+        // 1. Sky Tint (Tag/Nachtstimmung über alles)
+        if(skyOverlay) {
+            ctx.fillStyle = skyOverlay;
+            ctx.fillRect(0,0,canvas.width, canvas.height);
+        }
+
+        // 2. Nacht/Laterne
+        if(ambientLight > 0) {
+            ctx.fillStyle = `rgba(0,0,10,${ambientLight})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Loch in die Dunkelheit schneiden (Laterne) - Simuliert
+            if(ambientLight > 0.3) {
+                // Umrechnung Spielerpos auf Screen
+                let sx = (gameState.player.x - gameState.camX) * gameState.zoom + canvas.width/2 - (canvas.width/2 * gameState.zoom);
+                let sy = (gameState.player.y - gameState.camY) * gameState.zoom + canvas.height/2 - (canvas.height/2 * gameState.zoom);
+                
+                // Da Zoom und Translate komplex sind, einfacherer Weg für Laterne:
+                // Wir zeichnen sie im World-Space (siehe oben im `restore` Block wäre besser, aber Overlay ist hier).
+                // Alternative: Wir nutzen globalCompositeOperation 'destination-out' auf einem separaten Canvas, aber das ist teuer.
+                // Einfacher Hack: Wir zeichnen einen radialen Gradienten im "Lighter" Modus drüber.
+                
+                ctx.save();
+                // Wir müssen kurz zurück in den World-Space für die Position
+                // Oder wir schätzen die Screen-Koordinate:
+                let px = (gameState.player.x - gameState.camX) * gameState.zoom + canvas.width/2;
+                let py = (gameState.player.y - gameState.camY) * gameState.zoom + canvas.height/2;
+
+                const g = ctx.createRadialGradient(px, py, 20*gameState.zoom, px, py, 150*gameState.zoom);
+                g.addColorStop(0, "rgba(255, 200, 100, 0.3)"); g.addColorStop(1, "rgba(0,0,0,0)");
+                ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g;
+                ctx.beginPath(); ctx.arc(px, py, 150*gameState.zoom, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // 3. Wetter
+        if(gameState.weather !== 'sunny') {
+            ctx.strokeStyle = (gameState.weather === 'rain') ? "rgba(100,150,255,0.5)" : "rgba(255,255,255,0.8)";
+            ctx.lineWidth = (gameState.weather === 'rain') ? 2 : 4;
+            ctx.beginPath();
+            for(let i=0; i<100; i++) {
+                let px = (Date.now()/5 + i*157) % canvas.width;
+                let py = (Date.now()/2 + i*313) % canvas.height;
+                if(gameState.weather === 'rain') { ctx.moveTo(px, py); ctx.lineTo(px-5, py+10); } else { ctx.moveTo(px, py); ctx.lineTo(px+2, py+2); }
+            }
+            ctx.stroke();
+        }
+        
+        if(isTouchDevice) drawJoystick();
+    }
+
+    function drawDog(ctx, d) {
+        ctx.save(); ctx.translate(d.x, d.y);
+        if(d.flip) ctx.scale(-1, 1);
+        
+        // Animation
+        let l = Math.sin(d.anim)*4;
+        let headBob = Math.abs(Math.sin(d.anim*2))*2;
+        let tailWag = Math.sin(d.anim*3)*0.5;
+
+        // Beine (Hintergrund)
+        ctx.strokeStyle = "#e5e5e5"; ctx.lineWidth = 5; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5-l, 20); ctx.stroke(); // HL
+        ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10+l, 20); ctx.stroke(); // VL
+
+        // Körper (Weiß)
+        ctx.fillStyle = "#fff"; 
+        ctx.beginPath(); ctx.ellipse(0, 5, 14, 8, 0, 0, Math.PI*2); ctx.fill();
+        
+        // Flecken (Braun)
+        ctx.fillStyle = "#8d6e63";
+        ctx.beginPath(); ctx.arc(-5, 2, 4, 0, Math.PI*2); ctx.fill();
+
+        // Schwanz (Weiß mit Spitze)
+        ctx.save(); ctx.translate(12, 0); ctx.rotate(-0.5 + tailWag);
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, -6, 2, 6, 0, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+
+        // Halsband
+        ctx.strokeStyle = "red"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(-8, 5); ctx.lineTo(-8, -5); ctx.stroke();
+
+        // Beine (Vordergrund)
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5+l, 20); ctx.stroke(); // HR
+        ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10-l, 20); ctx.stroke(); // VR
+
+        // Kopf
+        ctx.save(); ctx.translate(-12, -8 + headBob);
+        ctx.fillStyle = "#fff"; 
+        ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI*2); ctx.fill();
+        
+        // Ohren (Braun, hängend)
+        ctx.fillStyle = "#8d6e63";
+        ctx.beginPath(); ctx.ellipse(-2, -6, 3, 6, -0.5, 0, Math.PI*2); ctx.fill(); // L
+        ctx.beginPath(); ctx.ellipse(6, -4, 3, 6, 0.5, 0, Math.PI*2); ctx.fill(); // R
+        
+        // Augenbinde/Fleck im Gesicht
+        ctx.fillStyle = "#8d6e63";
+        ctx.beginPath(); ctx.arc(-3, -2, 4, 0, Math.PI*2); ctx.fill();
+
+        // Nase & Augen
+        ctx.fillStyle = "black";
+        ctx.beginPath(); ctx.arc(-8, 1, 2, 0, Math.PI*2); ctx.fill(); // Nase
+        ctx.beginPath(); ctx.arc(-3, -2, 1.5, 0, Math.PI*2); ctx.fill(); // Auge
+        ctx.restore();
+
+        ctx.restore();
+    }
+
+    function drawTree(t) {
+        let color = seasons[0].treeColor; 
+        if(gameState.weather==='snow') color = "#bdc3c7"; else if(gameState.weather==='rain') color = "#1e8449";
+
+        ctx.fillStyle = "#795548"; ctx.beginPath(); ctx.rect(t.x-8, t.y, 16, 20); ctx.fill(); 
+        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(t.x, t.y-30, t.size/2, 0, Math.PI*2); ctx.fill();
+        
+        if(gameState.weather !== 'snow') {
+             ctx.fillStyle = "#c0392b";
+             t.apples.forEach(a => { ctx.beginPath(); ctx.arc(t.x+a.ox, t.y-30+a.oy, 5, 0, Math.PI*2); ctx.fill(); });
+        }
+    }
+
+    function drawRealisticHorse(ctx, x, y, color, flip, isPlayer, animFrame, isMoving, z=0, scale=1) {
+        ctx.save(); ctx.translate(x, y - z); 
+        ctx.scale(scale, scale);
+        if(flip) ctx.scale(-1, 1);
+        
+        let hop = isMoving ? Math.sin(animFrame)*3 : 0;
+        let rl = isMoving ? Math.sin(animFrame) : 0; 
+        let fl = isMoving ? Math.sin(animFrame+Math.PI) : 0; 
+        let hb = isMoving ? Math.sin(animFrame*1.5)*2 : Math.sin(Date.now()/600)*2;
+
+        ctx.translate(0, hop); 
+
+        if(z < 50) {
+            ctx.fillStyle = `rgba(0,0,0,${0.2 - z/200})`; 
+            ctx.beginPath(); ctx.ellipse(0, 50-hop+z, 25, 6, 0, 0, Math.PI*2); ctx.fill();
+        }
+
+        ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.moveTo(-20, 10); ctx.quadraticCurveTo(-25+rl*10, 25, -22+rl*15, 35); ctx.lineTo(-22+rl*18, 50); ctx.stroke();
+        ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(-24+rl*18, 50, 6, 4); ctx.fill();
+        ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(20, 10); ctx.quadraticCurveTo(25+fl*10, 25, 22+fl*12, 35); ctx.lineTo(22+fl*15, 50); ctx.stroke();
+        ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(20+fl*15, 50, 6, 4); ctx.fill();
+        
+        ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(25, 5); ctx.bezierCurveTo(30, 20, 10, 25, -10, 22); ctx.bezierCurveTo(-30, 20, -35, 5, -25, -5); ctx.bezierCurveTo(-15, -10, 10, -10, 25, 5); ctx.fill();
+        
+        let rl2 = isMoving ? Math.sin(animFrame+Math.PI) : 0; ctx.strokeStyle = color;
+        ctx.beginPath(); ctx.moveTo(-15, 10); ctx.quadraticCurveTo(-20+rl2*10, 25, -17+rl2*15, 35); ctx.lineTo(-17+rl2*18, 52); ctx.stroke();
+        ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(-19+rl2*18, 52, 6, 4); ctx.fill();
+        let fl2 = isMoving ? Math.sin(animFrame) : 0; ctx.strokeStyle = color;
+        ctx.beginPath(); ctx.moveTo(15, 10); ctx.quadraticCurveTo(20+fl2*10, 25, 17+fl2*12, 35); ctx.lineTo(17+fl2*15, 52); ctx.stroke();
+        ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(15+fl2*15, 52, 6, 4); ctx.fill();
+        
+        ctx.save(); ctx.translate(16, -6+hb); ctx.rotate(-0.2); ctx.fillStyle = color;
+        ctx.beginPath(); ctx.moveTo(-10, 15); ctx.lineTo(0, -25); ctx.lineTo(10, -20); ctx.lineTo(12, 15); ctx.fill();
+        
+        ctx.beginPath(); ctx.arc(6, -25, 9, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(13, -22, 12, 7, 0.2, 0, Math.PI*2); ctx.fill();
+        
+        ctx.fillStyle = isPlayer ? gameState.player.maneColor : "#2c2c2c";
+        ctx.beginPath(); ctx.moveTo(-4,-35); ctx.quadraticCurveTo(-15,-25,-10,0); ctx.lineTo(0,-25); ctx.fill();
+
+        ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(6,-27,3.5,0,Math.PI*2); ctx.fill();
+        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(7,-27,1.5,0,Math.PI*2); ctx.fill();
+        ctx.restore(); 
+        
+        ctx.strokeStyle = isPlayer ? gameState.player.maneColor : "#2c2c2c"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(-28, 0);
+        let tw = isMoving ? Math.sin(animFrame*2)*5 : Math.sin(Date.now()/300)*3;
+        ctx.quadraticCurveTo(-45, 10, -40+tw, 35); ctx.stroke();
+        
+        if(isPlayer) { ctx.fillStyle = "#c0392b"; ctx.beginPath(); ctx.moveTo(5, -5); ctx.quadraticCurveTo(0, 0, -15, -5); ctx.quadraticCurveTo(-10, 10, 5, 10); ctx.fill(); }
+        
+        ctx.restore();
+    }
+
+    function drawJoystick() {
+        ctx.beginPath(); ctx.arc(joy.baseX, joy.baseY, joy.radius, 0, Math.PI*2);
+        ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 4; ctx.fill(); ctx.stroke();
+        let x = joy.active ? joy.stickX : joy.baseX; let y = joy.active ? joy.stickY : joy.baseY;
+        ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI*2); ctx.fillStyle = "white"; ctx.fill();
+    }
+
+    function createParticles(x, y, char, count) { for(let i=0; i<count; i++) gameState.particles.push({x:x+(Math.random()-0.5)*40, y:y, char:char, life:1.0}); }
+    function isNearRiver(x, y, dist) { for(let p of gameState.terrain.riverPoints) { if(Math.hypot(x - p.x, y - p.y) < dist) return true; } return false; }
+    
+    // --- UI Logic ---
+    function updateUI() {
+        document.getElementById('inventory-display').innerText = gameState.inventory ? gameState.inventory.name : "Nichts";
+        document.getElementById('star-display').innerText = gameState.stars;
+        document.getElementById('drop-btn').style.display = gameState.inventory ? "block" : "none";
+        
+        let h = Math.floor(gameState.time * 24);
+        let m = Math.floor((gameState.time * 24 * 60) % 60);
+        document.getElementById('clock-display').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+        document.getElementById('stamina-bar').style.width = gameState.player.stamina + '%';
+    }
+
+    function updateQuestUI() {
+        const h = gameState.quest.horse;
+        const box = document.getElementById('quest-box');
+        const text = document.getElementById('quest-text');
+        
+        if(!h) {
+             text.innerText = "Alle zufrieden!";
+             box.style.borderLeftColor = "#ccc";
+             box.style.display = 'block'; // Zeige Abschlussnachricht
+             setTimeout(() => { if(!gameState.quest.horse) box.style.display = 'none'; }, 3000);
+             return;
+        }
+
+        box.style.display = 'block';
+        if(gameState.inventory && gameState.inventory.name === h.want.name) {
+             text.innerHTML = `Gib <b>${h.want.name}</b> ab!`; box.style.borderLeftColor = "#2ecc71";
+        } else { 
+            text.innerHTML = `Ein Pferd möchte:<br><b>${h.want.name}</b> ${h.want.emoji}`; box.style.borderLeftColor = "#FFD700"; 
+        }
+    }
+
+    // --- Shop & Customize ---
+    function initShop() {
+        const grid = document.getElementById('shop-grid');
+        grid.innerHTML = "";
+        shopItems.forEach(item => {
+            let div = document.createElement('div');
+            div.className = 'shop-item';
+            div.innerHTML = `<span style="font-size:30px">${item.emoji}</span><b>${item.name}</b><span>⭐ ${item.cost}</span>`;
+            div.onclick = () => buyItem(item);
+            grid.appendChild(div);
+        });
+    }
+
+    function buyItem(item) {
+        if(gameState.stars >= item.cost) {
+            gameState.stars -= item.cost;
+            Sound.playSuccess();
+            gameState.entities.decorations.push({
+                x: gameState.player.x + (Math.random()-0.5)*100,
+                y: gameState.player.y + (Math.random()-0.5)*100,
+                emoji: item.emoji
+            });
+            updateUI();
+            closeModals();
+        } else { alert("Nicht genug Sterne!"); }
+    }
+
+    // --- NEU: Dynamische Aktualisierung der Auswahl ---
+    function initCustomize() { updateCustomizeUI(); }
+    
+    function updateCustomizeUI() {
+        const colors = ['#654321', '#212121', '#eeeeee', '#d7ccc8', '#a1887f'];
+        const manes = ['#2c2c2c', '#eeeeee', '#8B4513'];
+        
+        const cContainer = document.getElementById('coat-colors');
+        cContainer.innerHTML = ''; // Reset
+        colors.forEach(c => {
+            let d = document.createElement('div');
+            d.className = 'color-swatch' + (gameState.player.color === c ? ' selected' : ''); 
+            d.style.background = c;
+            d.onclick = () => { gameState.player.color = c; Sound.playPop(); updateCustomizeUI(); };
+            cContainer.appendChild(d);
+        });
+
+        const mContainer = document.getElementById('mane-colors');
+        mContainer.innerHTML = ''; // Reset
+        manes.forEach(c => {
+            let d = document.createElement('div');
+            d.className = 'color-swatch' + (gameState.player.maneColor === c ? ' selected' : '');
+            d.style.background = c;
+            d.onclick = () => { gameState.player.maneColor = c; Sound.playPop(); updateCustomizeUI(); };
+            mContainer.appendChild(d);
+        });
+    }
+
+    function openShop() { 
+        document.getElementById('shop-stars').innerText = gameState.stars;
+        document.getElementById('shop-modal').style.display = 'flex'; 
+    }
+    function openCustomize() { 
+        updateCustomizeUI(); // Ensure correct selection is shown
+        document.getElementById('customize-modal').style.display = 'flex'; 
+    }
+    function closeModals() {
+        document.getElementById('shop-modal').style.display = 'none';
+        document.getElementById('customize-modal').style.display = 'none';
+    }
+
+    const tz = document.getElementById('joystick-touch-zone');
+    if(isTouchDevice) {
+        tz.addEventListener('touchstart', (e)=>{e.preventDefault(); joy.active=true; mj(e.touches[0].clientX,e.touches[0].clientY)});
+        tz.addEventListener('touchmove', (e)=>{e.preventDefault(); mj(e.touches[0].clientX,e.touches[0].clientY)});
+        tz.addEventListener('touchend', ()=>{joy.active=false; joy.stickX=joy.baseX; joy.stickY=joy.baseY; joy.dx=0; joy.dy=0;});
+    }
+    function mj(cx, cy) {
+        let dx = cx - joy.baseX, dy = cy - joy.baseY, d = Math.hypot(dx,dy);
+        if(d>joy.radius) { let r = joy.radius/d; dx*=r; dy*=r; }
+        joy.stickX=joy.baseX+dx; joy.stickY=joy.baseY+dy; joy.dx=dx/joy.radius; joy.dy=dy/joy.radius;
+    }
+
+    window.addEventListener('keydown', e => {
+        if(e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = true;
+        if(e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = true;
+        if(e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = true;
+        if(e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = true;
+        if(e.key === 'Shift') keys.Shift = true;
+        if(e.code === 'Space') { keys.Space = true; playerJump(); }
+        if(e.code === 'KeyQ' || e.code === 'KeyX') dropItem();
+    });
+    window.addEventListener('keyup', e => {
+        if(e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = false;
+        if(e.code === 'KeyS' || e.code === 'ArrowDown') keys.s = false;
+        if(e.code === 'KeyA' || e.code === 'ArrowLeft') keys.a = false;
+        if(e.code === 'KeyD' || e.code === 'ArrowRight') keys.d = false;
+        if(e.key === 'Shift') keys.Shift = false;
+        if(e.code === 'Space') keys.Space = false;
+    });
+
+    window.addEventListener('resize', resize);
+    resize();
+    initUI();
+</script>
+</body>
+</html>
