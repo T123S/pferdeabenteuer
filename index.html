@@ -5,12 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pferdehof Abenteuer Deluxe</title>
     
-    <!-- PWA Verknüpfungen -->
-    <link rel="manifest" href="manifest.json">
+    <!-- PWA Verknüpfungen (Data URI als Fallback für fehlende Icons) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐴</text></svg>">
     <meta name="theme-color" content="#7BC043">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="icons/icon-192.png">
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
@@ -284,7 +283,7 @@
         time: 0, dayDuration: 12000, 
         weather: 'sunny', weatherTimer: 0,
         entities: { horses: [], items: [], decorations: [], dogs: [], ducks: [] },
-        terrain: { riverPoints: [], fields: [], trees: [], grassTufts: [], obstacles: [] },
+        terrain: { riverPoints: [], fields: [], trees: [], grassTufts: [], obstacles: [], fences: [] },
         inventory: null, particles: [], footprints: [],
         camX: 0, camY: 0, zoom: 1.0,
         player: { 
@@ -345,18 +344,24 @@
         
         gameState.terrain.trees = [];
         gameState.terrain.obstacles = [];
+        gameState.terrain.fences = [];
         
-        // Bäume generieren (Normaler Wald + Dichte Randbepflanzung)
+        // Weltbegrenzung (Zäune)
+        for(let x=0; x<=WORLD_W; x+=80) {
+            gameState.terrain.fences.push({x:x, y:5}); // Oben
+            gameState.terrain.fences.push({x:x, y:WORLD_H-5}); // Unten
+        }
+        for(let y=0; y<=WORLD_H; y+=60) {
+            gameState.terrain.fences.push({x:5, y:y}); // Links
+            gameState.terrain.fences.push({x:WORLD_W-5, y:y}); // Rechts
+        }
+
+        // Bäume generieren
         for(let i=0; i<150; i++) {
-            // Zufällige Positionen für den normalen Wald
             let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
             
-            // Logik für Randbepflanzung (Natürliche Grenze)
-            // Wenn wir nahe am Rand sind (0-150px oder WORLD-150px), setzen wir garantiert Bäume
-            if (i < 80) { // Die ersten 80 sind Random
-                 // Normaler Zufall
-            } else {
-                // Die restlichen forcieren wir an den Rand
+            // Logik für Randbepflanzung
+            if (i >= 80) {
                 if (Math.random() > 0.5) {
                     x = Math.random() < 0.5 ? Math.random() * 100 : WORLD_W - Math.random() * 100;
                     y = Math.random() * WORLD_H;
@@ -367,13 +372,17 @@
             }
 
             if(!isNearRiver(x,y,80)) {
-                // Hindernis hinzufügen, damit man nicht durchläuft
-                gameState.terrain.obstacles.push({x:x-15, y:y-10, w:30, h:20}); 
-                gameState.terrain.trees.push({x:x, y:y, size: 60+Math.random()*40, apples:[]});
+                // Früchte generieren (20% Chance auf Äpfel)
+                let apples = [];
+                if(Math.random() < 0.3) {
+                     apples = [{ox:-15,oy:-15}, {ox:15,oy:-5}, {ox:0,oy:-25}, {ox:-10,oy:5}];
+                }
+                gameState.terrain.trees.push({x:x, y:y, size: 60+Math.random()*40, apples: apples});
+                // KEINE Obstacles mehr pushen für Bäume
             }
         }
         
-        // Zusätzliche Hindernisse
+        // Hindernisse (Baumstämme etc. - diese bleiben Hindernisse)
         for(let i=0; i<15; i++) {
             let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
             if(!isNearRiver(x,y,100)) gameState.terrain.obstacles.push({x:x, y:y, w:80, h:20});
@@ -414,7 +423,7 @@
 
         spawnItems();
         updateUI();
-        updateQuestUI(); // Quest Box direkt anzeigen
+        updateQuestUI(); 
     }
 
     function spawnItems() {
@@ -489,10 +498,11 @@
 
         } else { p.animFrame = 0; }
 
-        // Hard clamp nur noch als Fallback, falls man sich durch Bäume glitcht
+        // Hard clamp
         p.x = Math.max(50, Math.min(WORLD_W-50, p.x));
         p.y = Math.max(50, Math.min(WORLD_H-50, p.y));
 
+        // Hinderniskollision (Nur noch für echte Hindernisse, nicht Bäume)
         if(p.z < 10) {
             for(let o of gameState.terrain.obstacles) {
                 if(p.x > o.x - 20 && p.x < o.x + o.w + 20 && p.y > o.y - 10 && p.y < o.y + o.h + 10) {
@@ -617,30 +627,26 @@
         const H = canvas.height;
         let t = gameState.time; 
         
-        // Hintergrund ist IMMER Gras/Schnee für den "Infinite World" Look
+        // Hintergrund
         ctx.fillStyle = (gameState.weather==='snow') ? "#ecf0f1" : "#7BC043";
         ctx.fillRect(0,0,canvas.width, canvas.height);
 
-        // Himmelsfarbe berechnen für Overlay
+        // Himmelsfarbe Overlay
         let skyOverlay = null;
         let ambientLight = 0;
 
         if(t < 0.2) { 
-            // Morgen: Gelb/Orange Tint
             skyOverlay = ctx.createLinearGradient(0,0,0,H); 
             skyOverlay.addColorStop(0, "rgba(135, 206, 235, 0.4)"); 
             skyOverlay.addColorStop(1, "rgba(241, 196, 15, 0.2)"); 
         } else if(t < 0.7) { 
-            // Tag: Fast kein Tint, nur leicht blau
              skyOverlay = "rgba(135, 206, 235, 0.1)";
         } else if(t < 0.8) { 
-            // Abend: Dunkelblau/Orange
             skyOverlay = ctx.createLinearGradient(0,0,0,H); 
             skyOverlay.addColorStop(0, "rgba(44, 62, 80, 0.4)"); 
             skyOverlay.addColorStop(1, "rgba(230, 126, 34, 0.3)"); 
             ambientLight = (t-0.7)*5; 
         } else { 
-            // Nacht
             ambientLight = 0.6;
         }
 
@@ -648,7 +654,7 @@
         ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(gameState.zoom, gameState.zoom);
         ctx.translate(-canvas.width/2, -canvas.height/2); ctx.translate(-gameState.camX, -gameState.camY);
 
-        // Weltinhalt zeichnen (kein fillRect für Boden mehr, da Screen filled ist)
+        // Weltinhalt
         
         // Fußspuren
         ctx.fillStyle = "rgba(0,0,0,0.1)";
@@ -673,11 +679,19 @@
                 ctx.fillStyle = "#6D4C41"; for(let fy=f.y+20; fy<f.y+f.h; fy+=30) ctx.fillRect(f.x+10, fy, f.w-20, 10);
             });
         }
+        
+        // Zäune
+        ctx.fillStyle = "#8d6e63";
+        gameState.terrain.fences.forEach(f => {
+            ctx.beginPath(); ctx.rect(f.x-5, f.y-10, 10, 20); ctx.fill(); // Pfosten
+            // Querbalken (vereinfacht, nur Pfosten für Performance/Look)
+        });
 
         gameState.entities.decorations.forEach(d => { ctx.font = "40px Arial"; ctx.fillText(d.emoji, d.x, d.y); });
         
         ctx.globalAlpha = 1.0;
-        ctx.font = "20px Arial";
+        ctx.fillStyle = "black";
+        ctx.font = "30px Arial";
         gameState.entities.ducks.forEach(d => ctx.fillText("🦆", d.x, d.y));
 
         ctx.fillStyle = "#5d4037";
@@ -701,7 +715,33 @@
         renderList.sort((a,b) => a.y - b.y);
 
         renderList.forEach(obj => {
-            if(obj.type === 'horse') drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, false, obj.anim, obj.state==='walk', 0, obj.isFoal?0.6:1);
+            if(obj.type === 'horse') {
+                drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, false, obj.anim, obj.state==='walk', 0, obj.isFoal?0.6:1);
+                
+                // --- UPDATE: Gedankenblase besser sichtbar und animiert ---
+                if(gameState.quest.horse && obj.id === gameState.quest.horse.id && !obj.satisfied) {
+                    ctx.save();
+                    let bounce = Math.sin(Date.now()/200) * 5;
+                    ctx.translate(obj.x, obj.y - 80 + bounce);
+                    
+                    // Blase
+                    ctx.fillStyle = "white";
+                    ctx.beginPath(); ctx.ellipse(0, 0, 30, 25, 0, 0, Math.PI*2); ctx.fill();
+                    ctx.strokeStyle = "#333"; ctx.lineWidth = 3; ctx.stroke();
+                    
+                    // Spitze
+                    ctx.beginPath(); ctx.moveTo(0, 25); ctx.lineTo(-10, 40); ctx.lineTo(10, 25); ctx.fillStyle="white"; ctx.fill(); ctx.stroke();
+                    
+                    // Inhalt
+                    ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "black";
+                    ctx.fillText(obj.want.emoji, 0, 0);
+                    
+                    // Rand entfernen (kosmetisch für Spitze)
+                    ctx.fillStyle="white"; ctx.beginPath(); ctx.moveTo(-5,23); ctx.lineTo(5,23); ctx.lineTo(0,30); ctx.fill();
+                    
+                    ctx.restore();
+                }
+            }
             if(obj.type === 'dog') drawDog(ctx, obj);
             if(obj.type === 'player') drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, true, obj.animFrame, (keys.w||keys.a||keys.s||keys.d||joy.active), obj.z, 1);
         });
@@ -717,45 +757,26 @@
         ctx.globalAlpha = 1;
         ctx.restore();
 
-        // Overlays (Screen Space)
-        
-        // 1. Sky Tint (Tag/Nachtstimmung über alles)
-        if(skyOverlay) {
-            ctx.fillStyle = skyOverlay;
-            ctx.fillRect(0,0,canvas.width, canvas.height);
-        }
+        // Overlays
+        if(skyOverlay) { ctx.fillStyle = skyOverlay; ctx.fillRect(0,0,canvas.width, canvas.height); }
 
-        // 2. Nacht/Laterne
         if(ambientLight > 0) {
             ctx.fillStyle = `rgba(0,0,10,${ambientLight})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Loch in die Dunkelheit schneiden (Laterne) - Simuliert
             if(ambientLight > 0.3) {
-                // Umrechnung Spielerpos auf Screen
-                let sx = (gameState.player.x - gameState.camX) * gameState.zoom + canvas.width/2 - (canvas.width/2 * gameState.zoom);
-                let sy = (gameState.player.y - gameState.camY) * gameState.zoom + canvas.height/2 - (canvas.height/2 * gameState.zoom);
-                
-                // Da Zoom und Translate komplex sind, einfacherer Weg für Laterne:
-                // Wir zeichnen sie im World-Space (siehe oben im `restore` Block wäre besser, aber Overlay ist hier).
-                // Alternative: Wir nutzen globalCompositeOperation 'destination-out' auf einem separaten Canvas, aber das ist teuer.
-                // Einfacher Hack: Wir zeichnen einen radialen Gradienten im "Lighter" Modus drüber.
-                
-                ctx.save();
-                // Wir müssen kurz zurück in den World-Space für die Position
-                // Oder wir schätzen die Screen-Koordinate:
                 let px = (gameState.player.x - gameState.camX) * gameState.zoom + canvas.width/2;
                 let py = (gameState.player.y - gameState.camY) * gameState.zoom + canvas.height/2;
-
                 const g = ctx.createRadialGradient(px, py, 20*gameState.zoom, px, py, 150*gameState.zoom);
                 g.addColorStop(0, "rgba(255, 200, 100, 0.3)"); g.addColorStop(1, "rgba(0,0,0,0)");
+                
+                // FIX: State speichern, damit 'lighter' Modus nicht den nächsten Frame kaputt macht
+                ctx.save();
                 ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g;
                 ctx.beginPath(); ctx.arc(px, py, 150*gameState.zoom, 0, Math.PI*2); ctx.fill();
                 ctx.restore();
             }
         }
 
-        // 3. Wetter
         if(gameState.weather !== 'sunny') {
             ctx.strokeStyle = (gameState.weather === 'rain') ? "rgba(100,150,255,0.5)" : "rgba(255,255,255,0.8)";
             ctx.lineWidth = (gameState.weather === 'rain') ? 2 : 4;
@@ -774,60 +795,20 @@
     function drawDog(ctx, d) {
         ctx.save(); ctx.translate(d.x, d.y);
         if(d.flip) ctx.scale(-1, 1);
-        
-        // Animation
-        let l = Math.sin(d.anim)*4;
-        let headBob = Math.abs(Math.sin(d.anim*2))*2;
-        let tailWag = Math.sin(d.anim*3)*0.5;
-
-        // Beine (Hintergrund)
+        let l = Math.sin(d.anim)*4; let headBob = Math.abs(Math.sin(d.anim*2))*2; let tailWag = Math.sin(d.anim*3)*0.5;
         ctx.strokeStyle = "#e5e5e5"; ctx.lineWidth = 5; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5-l, 20); ctx.stroke(); // HL
-        ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10+l, 20); ctx.stroke(); // VL
-
-        // Körper (Weiß)
-        ctx.fillStyle = "#fff"; 
-        ctx.beginPath(); ctx.ellipse(0, 5, 14, 8, 0, 0, Math.PI*2); ctx.fill();
-        
-        // Flecken (Braun)
-        ctx.fillStyle = "#8d6e63";
-        ctx.beginPath(); ctx.arc(-5, 2, 4, 0, Math.PI*2); ctx.fill();
-
-        // Schwanz (Weiß mit Spitze)
-        ctx.save(); ctx.translate(12, 0); ctx.rotate(-0.5 + tailWag);
-        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, -6, 2, 6, 0, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-
-        // Halsband
-        ctx.strokeStyle = "red"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(-8, 5); ctx.lineTo(-8, -5); ctx.stroke();
-
-        // Beine (Vordergrund)
-        ctx.strokeStyle = "#fff"; ctx.lineWidth = 5;
-        ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5+l, 20); ctx.stroke(); // HR
-        ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10-l, 20); ctx.stroke(); // VR
-
-        // Kopf
-        ctx.save(); ctx.translate(-12, -8 + headBob);
-        ctx.fillStyle = "#fff"; 
-        ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI*2); ctx.fill();
-        
-        // Ohren (Braun, hängend)
-        ctx.fillStyle = "#8d6e63";
-        ctx.beginPath(); ctx.ellipse(-2, -6, 3, 6, -0.5, 0, Math.PI*2); ctx.fill(); // L
-        ctx.beginPath(); ctx.ellipse(6, -4, 3, 6, 0.5, 0, Math.PI*2); ctx.fill(); // R
-        
-        // Augenbinde/Fleck im Gesicht
-        ctx.fillStyle = "#8d6e63";
-        ctx.beginPath(); ctx.arc(-3, -2, 4, 0, Math.PI*2); ctx.fill();
-
-        // Nase & Augen
-        ctx.fillStyle = "black";
-        ctx.beginPath(); ctx.arc(-8, 1, 2, 0, Math.PI*2); ctx.fill(); // Nase
-        ctx.beginPath(); ctx.arc(-3, -2, 1.5, 0, Math.PI*2); ctx.fill(); // Auge
-        ctx.restore();
-
-        ctx.restore();
+        ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5-l, 20); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10+l, 20); ctx.stroke();
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 5, 14, 8, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.arc(-5, 2, 4, 0, Math.PI*2); ctx.fill();
+        ctx.save(); ctx.translate(12, 0); ctx.rotate(-0.5 + tailWag); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, -6, 2, 6, 0, 0, Math.PI*2); ctx.fill(); ctx.restore();
+        ctx.strokeStyle = "red"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-8, 5); ctx.lineTo(-8, -5); ctx.stroke();
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5+l, 20); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10-l, 20); ctx.stroke();
+        ctx.save(); ctx.translate(-12, -8 + headBob); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.ellipse(-2, -6, 3, 6, -0.5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(6, -4, 3, 6, 0.5, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.arc(-3, -2, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(-8, 1, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(-3, -2, 1.5, 0, Math.PI*2); ctx.fill();
+        ctx.restore(); ctx.restore();
     }
 
     function drawTree(t) {
@@ -837,9 +818,14 @@
         ctx.fillStyle = "#795548"; ctx.beginPath(); ctx.rect(t.x-8, t.y, 16, 20); ctx.fill(); 
         ctx.fillStyle = color; ctx.beginPath(); ctx.arc(t.x, t.y-30, t.size/2, 0, Math.PI*2); ctx.fill();
         
-        if(gameState.weather !== 'snow') {
-             ctx.fillStyle = "#c0392b";
-             t.apples.forEach(a => { ctx.beginPath(); ctx.arc(t.x+a.ox, t.y-30+a.oy, 5, 0, Math.PI*2); ctx.fill(); });
+        if(gameState.weather !== 'snow' && t.apples && t.apples.length > 0) {
+             ctx.fillStyle = "#c0392b"; // Apfelrot
+             t.apples.forEach(a => { 
+                 ctx.beginPath(); ctx.arc(t.x+a.ox, t.y-30+a.oy, 5, 0, Math.PI*2); ctx.fill(); 
+                 // Glanzlicht auf Apfel
+                 ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.beginPath(); ctx.arc(t.x+a.ox-1, t.y-30+a.oy-1, 2, 0, Math.PI*2); ctx.fill();
+                 ctx.fillStyle = "#c0392b"; 
+             });
         }
     }
 
@@ -896,12 +882,9 @@
         
         ctx.restore();
     }
-
-    function drawJoystick() {
-        ctx.beginPath(); ctx.arc(joy.baseX, joy.baseY, joy.radius, 0, Math.PI*2);
-        ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 4; ctx.fill(); ctx.stroke();
-        let x = joy.active ? joy.stickX : joy.baseX; let y = joy.active ? joy.stickY : joy.baseY;
-        ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI*2); ctx.fillStyle = "white"; ctx.fill();
+    
+    function changeZoom(d) {
+        gameState.zoom = Math.max(0.5, Math.min(2.0, gameState.zoom + d));
     }
 
     function createParticles(x, y, char, count) { for(let i=0; i<count; i++) gameState.particles.push({x:x+(Math.random()-0.5)*40, y:y, char:char, life:1.0}); }
