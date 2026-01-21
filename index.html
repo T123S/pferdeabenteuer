@@ -305,7 +305,7 @@
         time: 0, dayDuration: 12000, 
         weather: 'sunny', weatherTimer: 0,
         entities: { horses: [], items: [], decorations: [], dogs: [], ducks: [], chickens: [] },
-        terrain: { riverPoints: [], fields: [], trees: [], grassTufts: [], obstacles: [], fences: [] },
+        terrain: { riverPoints: [], fields: [], trees: [], grassTufts: [], obstacles: [], fences: [], house: null },
         inventory: null, particles: [], footprints: [],
         camX: 0, camY: 0, zoom: 1.0,
         player: { 
@@ -381,6 +381,10 @@
             gameState.terrain.fences.push({x:WORLD_W-5, y:y}); // Rechts
         }
 
+        // --- Haus ---
+        gameState.terrain.house = {x: 300, y: 300, w: 160, h: 120};
+        gameState.terrain.obstacles.push({x: 300, y: 300, w: 160, h: 120}); // Kollision fürs Haus
+
         // Bäume
         for(let i=0; i<150; i++) {
             let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
@@ -388,7 +392,8 @@
                 if (Math.random() > 0.5) { x = Math.random() < 0.5 ? Math.random() * 100 : WORLD_W - Math.random() * 100; y = Math.random() * WORLD_H; } 
                 else { x = Math.random() * WORLD_W; y = Math.random() < 0.5 ? Math.random() * 100 : WORLD_H - Math.random() * 100; }
             }
-            if(!isNearRiver(x,y,80)) {
+            // Nicht im Haus oder Fluss
+            if(!isNearRiver(x,y,80) && !(x > 250 && x < 500 && y > 250 && y < 500)) {
                 let apples = [];
                 if(Math.random() < 0.3) apples = [{ox:-15,oy:-15}, {ox:15,oy:-5}, {ox:0,oy:-25}, {ox:-10,oy:5}];
                 gameState.terrain.trees.push({x:x, y:y, size: 60+Math.random()*40, apples: apples});
@@ -398,7 +403,7 @@
         // Hindernisse
         for(let i=0; i<15; i++) {
             let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
-            if(!isNearRiver(x,y,100)) gameState.terrain.obstacles.push({x:x, y:y, w:80, h:20});
+            if(!isNearRiver(x,y,100) && !(x > 250 && x < 500 && y > 250 && y < 500)) gameState.terrain.obstacles.push({x:x, y:y, w:80, h:20});
         }
 
         // Tiere
@@ -763,19 +768,14 @@
         ctx.fillStyle = "black";
         ctx.font = "30px Arial";
         gameState.entities.ducks.forEach(d => ctx.fillText("🦆", d.x, d.y));
-        gameState.entities.chickens.forEach(c => {
-             ctx.save(); ctx.translate(c.x, c.y); 
-             if(c.vx < 0) ctx.scale(-1, 1);
-             // Hüpf-Effekt wenn Panik
-             let bounce = c.panic > 0 ? Math.sin(Date.now()/50)*5 : 0;
-             ctx.fillText("🐔", 0, bounce); 
-             ctx.restore();
-        });
 
         ctx.fillStyle = "#5d4037";
         gameState.terrain.obstacles.forEach(o => {
-            ctx.beginPath(); ctx.roundRect(o.x, o.y, o.w, o.h, 10); ctx.fill();
-            ctx.fillStyle="rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.roundRect(o.x, o.y+5, o.w, o.h-10, 5); ctx.fill(); ctx.fillStyle="#5d4037";
+            // Nur Hindernisse zeichnen, die NICHT das Haus sind (das Haus hat eigene Zeichenfunktion)
+            if(o !== gameState.terrain.obstacles.find(obs => obs.x === gameState.terrain.house.x && obs.y === gameState.terrain.house.y)) {
+                ctx.beginPath(); ctx.roundRect(o.x, o.y, o.w, o.h, 10); ctx.fill();
+                ctx.fillStyle="rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.roundRect(o.x, o.y+5, o.w, o.h-10, 5); ctx.fill(); ctx.fillStyle="#5d4037";
+            }
         });
 
         ctx.font = "30px Arial"; ctx.textAlign = "center";
@@ -788,11 +788,14 @@
         const renderList = [
             ...gameState.entities.horses.map(h => ({...h, type:'horse'})),
             ...gameState.entities.dogs.map(d => ({...d, type:'dog'})),
+            ...gameState.entities.chickens.map(c => ({...c, type:'chicken'})),
+            {...gameState.terrain.house, type: 'house', y: gameState.terrain.house.y + gameState.terrain.house.h}, // Haus sortieren basierend auf Bodenlinie
             {...gameState.player, type:'player'}
         ];
         renderList.sort((a,b) => a.y - b.y);
 
         renderList.forEach(obj => {
+            if(obj.type === 'house') drawHouse(ctx, gameState.terrain.house);
             if(obj.type === 'horse') {
                 drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, false, obj.anim, obj.state==='walk', 0, obj.isFoal?0.6:1);
                 
@@ -821,6 +824,7 @@
                 }
             }
             if(obj.type === 'dog') drawDog(ctx, obj);
+            if(obj.type === 'chicken') drawChicken(ctx, obj);
             if(obj.type === 'player') drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, true, obj.animFrame, (keys.w||keys.a||keys.s||keys.d||joy.active), obj.z, 1);
         });
 
@@ -850,6 +854,18 @@
                 ctx.save();
                 ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g;
                 ctx.beginPath(); ctx.arc(px, py, 150*gameState.zoom, 0, Math.PI*2); ctx.fill();
+                
+                // Fenster des Hauses beleuchten
+                if(gameState.terrain.house) {
+                    let hx = (gameState.terrain.house.x + gameState.terrain.house.w/2 - gameState.camX) * gameState.zoom + canvas.width/2;
+                    let hy = (gameState.terrain.house.y + gameState.terrain.house.h/2 - gameState.camY) * gameState.zoom + canvas.height/2;
+                    // Einfacher Lichtpunkt für Haus
+                    const gh = ctx.createRadialGradient(hx, hy, 10*gameState.zoom, hx, hy, 60*gameState.zoom);
+                    gh.addColorStop(0, "rgba(255, 255, 200, 0.5)"); gh.addColorStop(1, "rgba(0,0,0,0)");
+                    ctx.fillStyle = gh;
+                    ctx.beginPath(); ctx.arc(hx, hy, 60*gameState.zoom, 0, Math.PI*2); ctx.fill();
+                }
+
                 ctx.restore();
             }
         }
@@ -867,6 +883,68 @@
         }
         
         if(isTouchDevice) drawJoystick();
+    }
+
+    function drawHouse(ctx, h) {
+        // Ground shadow
+        ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(h.x+5, h.y+h.h-5, h.w, 10);
+
+        // Walls
+        ctx.fillStyle = "#ecf0f1"; ctx.fillRect(h.x, h.y, h.w, h.h);
+        
+        // Wood beams
+        ctx.fillStyle = "#5d4037";
+        ctx.fillRect(h.x, h.y, 10, h.h); ctx.fillRect(h.x+h.w-10, h.y, 10, h.h);
+        ctx.fillRect(h.x, h.y, h.w, 10); ctx.fillRect(h.x, h.y+h.h-10, h.w, 10);
+        
+        // Cross beams
+        ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(h.x+h.w, h.y+h.h); ctx.strokeStyle="#5d4037"; ctx.lineWidth=5; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(h.x+h.w, h.y); ctx.lineTo(h.x, h.y+h.h); ctx.stroke();
+
+        // Roof
+        ctx.fillStyle = "#c0392b"; 
+        ctx.beginPath(); ctx.moveTo(h.x-10, h.y); ctx.lineTo(h.x + h.w/2, h.y - 60); ctx.lineTo(h.x + h.w + 10, h.y); ctx.fill();
+        
+        // Door
+        ctx.fillStyle = "#3e2723"; ctx.fillRect(h.x + h.w/2 - 15, h.y + h.h - 40, 30, 40);
+        
+        // Sign
+        ctx.fillStyle = "#8d6e63"; ctx.fillRect(h.x + h.w/2 - 30, h.y - 20, 60, 20);
+        ctx.fillStyle = "#fff"; ctx.font = "12px Fredoka"; ctx.textAlign = "center"; ctx.fillText("Gute Nacht", h.x + h.w/2, h.y - 6);
+    }
+
+    function drawChicken(ctx, c) {
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        if(c.vx < 0) ctx.scale(-1, 1);
+
+        // Hop effect
+        let bounce = c.panic > 0 ? Math.sin(Date.now()/50)*5 : Math.abs(Math.sin(Date.now()/200))*2;
+        ctx.translate(0, -bounce);
+
+        // Body
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 0, 10, 8, 0, 0, Math.PI*2); ctx.fill();
+
+        // Tail feathers
+        ctx.beginPath(); ctx.moveTo(-8, -2); ctx.lineTo(-12, -8); ctx.lineTo(-10, -2); ctx.fill();
+
+        // Head
+        ctx.beginPath(); ctx.arc(6, -6, 5, 0, Math.PI*2); ctx.fill();
+
+        // Comb (Red)
+        ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.ellipse(6, -10, 3, 2, 0, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(8, -4, 2, 3, 0, 0, Math.PI*2); ctx.fill();
+
+        // Beak (Orange)
+        ctx.fillStyle = "#f39c12"; ctx.beginPath(); ctx.moveTo(9, -7); ctx.lineTo(13, -5); ctx.lineTo(9, -3); ctx.fill();
+
+        // Eye
+        ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(7, -7, 1, 0, Math.PI*2); ctx.fill();
+
+        // Wing
+        ctx.strokeStyle = "#ddd"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI, false); ctx.stroke();
+
+        ctx.restore();
     }
 
     function drawDog(ctx, d) {
