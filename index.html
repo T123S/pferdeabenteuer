@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pferdehof Abenteuer Deluxe</title>
+    <title>Pferdehof Abenteuer</title>
     
-    <!-- PWA Verknüpfungen (Data URI als Fallback für fehlende Icons) -->
+    <!-- PWA Verknüpfungen -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐴</text></svg>">
     <meta name="theme-color" content="#7BC043">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -80,7 +80,7 @@
             pointer-events: none; display: none; text-shadow: none; text-align: center;
         }
         
-        /* Putz-Hinweis */
+        /* Putz-Hinweis & Schlaf-Overlay */
         #groom-hint {
             position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px;
@@ -88,6 +88,13 @@
             animation: pulse 1s infinite; pointer-events: none;
         }
         @keyframes pulse { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.1); } 100% { transform: translateX(-50%) scale(1); } }
+
+        #sleep-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: black; opacity: 0; pointer-events: none; transition: opacity 1s;
+            display: flex; justify-content: center; align-items: center;
+            color: white; font-size: 40px; z-index: 200;
+        }
 
         /* Buttons */
         button {
@@ -164,6 +171,7 @@
         #joystick-touch-zone {
             position: absolute; bottom: 30px; left: 30px;
             width: 160px; height: 160px; z-index: 20; border-radius: 50%;
+            /* background: rgba(255,0,0,0.2); Debug */
         }
     </style>
 </head>
@@ -171,7 +179,7 @@
 
     <div id="ui-layer">
         <div class="hud-left">
-            <div class="hud-item"><span>📅</span> <span id="clock-display">12:00</span></div>
+            <div class="hud-item"><span>📅</span> <span id="clock-display">06:00</span></div>
             <div class="hud-row">
                 <div class="hud-item"><span>🎒</span> <span id="inventory-display">Leer</span></div>
                 <button id="drop-btn" onclick="dropItem()">❌</button>
@@ -199,6 +207,8 @@
             <button class="action-circle" onclick="playerJump()">🦘</button>
         </div>
     </div>
+    
+    <div id="sleep-overlay">Gute Nacht! 🌙</div>
 
     <!-- Start / Level Screen -->
     <div id="level-screen">
@@ -267,7 +277,8 @@
         playJump: () => Sound.playTone(300, 'sine', 0.3, 0.2),
         playPop: () => Sound.playTone(400, 'triangle', 0.1, 0.1),
         playSuccess: () => { Sound.playTone(523, 'sine', 0.2); setTimeout(()=>Sound.playTone(659, 'sine', 0.4), 100); },
-        playCluck: () => { if(!soundEnabled) return; Sound.playTone(600, 'sawtooth', 0.1, 0.05); setTimeout(()=>Sound.playTone(500, 'sawtooth', 0.1, 0.05), 100); }
+        playCluck: () => { if(!soundEnabled) return; Sound.playTone(600, 'sawtooth', 0.1, 0.05); setTimeout(()=>Sound.playTone(500, 'sawtooth', 0.1, 0.05), 100); },
+        playSleep: () => { Sound.playTone(300, 'sine', 0.5, 0.1); setTimeout(()=>Sound.playTone(200, 'sine', 0.5, 0.1), 300); }
     };
 
     // --- Game Setup ---
@@ -302,7 +313,7 @@
     // State
     let gameState = {
         running: false, level: 0, stars: 0,
-        time: 0, dayDuration: 12000, 
+        time: 0.25, dayDuration: 12000, 
         weather: 'sunny', weatherTimer: 0,
         entities: { horses: [], items: [], decorations: [], dogs: [], ducks: [], chickens: [] },
         terrain: { riverPoints: [], fields: [], trees: [], grassTufts: [], obstacles: [], fences: [], house: null },
@@ -316,10 +327,11 @@
         },
         quest: { horse: null },
         grooming: { active: false, progress: 0, targetHorse: null },
+        sleeping: false,
         purchased: []
     };
 
-    let joy = { active: false, baseX: 100, baseY: 0, stickX: 0, stickY: 0, dx: 0, dy: 0, radius: 50 };
+    let joy = { active: false, touchId: null, baseX: 110, baseY: 0, stickX: 0, stickY: 0, dx: 0, dy: 0, radius: 50 };
     const keys = { w:false, a:false, s:false, d:false, Shift:false, Space:false };
 
     // --- Init ---
@@ -342,7 +354,10 @@
     function resize() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
-        joy.baseY = canvas.height - 110; 
+        // Joystick Visual Center
+        joy.baseX = 30 + 160/2; // Left + width/2
+        joy.baseY = canvas.height - (30 + 160/2); // Bottom + height/2
+        
         if(!joy.active) { joy.stickX = joy.baseX; joy.stickY = joy.baseY; }
     }
 
@@ -355,7 +370,7 @@
     }
 
     function generateWorld() {
-        gameState.time = 0.2; 
+        gameState.time = 0.25; 
         gameState.stars = 0;
         gameState.entities.horses = [];
         gameState.entities.items = [];
@@ -382,9 +397,9 @@
         }
 
         // --- Haus ---
+        // KEIN obstacle mehr für das Haus selbst, damit es begehbar ist.
         gameState.terrain.house = {x: 300, y: 300, w: 160, h: 120};
-        gameState.terrain.obstacles.push({x: 300, y: 300, w: 160, h: 120}); // Kollision fürs Haus
-
+        
         // Bäume
         for(let i=0; i<150; i++) {
             let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
@@ -456,22 +471,25 @@
     function loop() {
         if(!gameState.running) return;
         
-        gameState.time += 1/gameState.dayDuration;
-        if(gameState.time >= 1) gameState.time = 0;
-        
-        gameState.weatherTimer++;
-        if(gameState.weatherTimer > 3000) {
-            gameState.weatherTimer = 0;
-            const r = Math.random();
-            if(r < 0.6) gameState.weather = 'sunny'; else if(r < 0.9) gameState.weather = 'rain'; else gameState.weather = 'snow';
-        }
+        if(!gameState.sleeping) {
+            gameState.time += 1/gameState.dayDuration;
+            if(gameState.time >= 1) gameState.time = 0;
+            
+            gameState.weatherTimer++;
+            if(gameState.weatherTimer > 3000) {
+                gameState.weatherTimer = 0;
+                const r = Math.random();
+                if(r < 0.6) gameState.weather = 'sunny'; else if(r < 0.9) gameState.weather = 'rain'; else gameState.weather = 'snow';
+            }
 
-        handlePlayerMovement();
-        updateHorses();
-        updateDog();
-        updateDucks();
-        updateChickens();
-        checkCollisions();
+            handlePlayerMovement();
+            updateHorses();
+            updateDog();
+            updateDucks();
+            updateChickens();
+            checkCollisions();
+            checkHouseSleep(); // Neuer Check
+        }
 
         let tx = gameState.player.x - canvas.width/2;
         let ty = gameState.player.y - canvas.height/2;
@@ -480,6 +498,73 @@
 
         draw();
         requestAnimationFrame(loop);
+    }
+
+    // Verbesserte Joystick Logik
+    const joyZone = document.getElementById('joystick-touch-zone');
+    
+    function updateJoystick(touch) {
+        let dx = touch.clientX - joy.baseX;
+        let dy = touch.clientY - joy.baseY;
+        let dist = Math.hypot(dx, dy);
+        
+        if(dist > joy.radius) {
+            let ratio = joy.radius / dist;
+            dx *= ratio;
+            dy *= ratio;
+        }
+        
+        joy.stickX = joy.baseX + dx;
+        joy.stickY = joy.baseY + dy;
+        joy.dx = dx / joy.radius;
+        joy.dy = dy / joy.radius;
+    }
+
+    function resetJoystick() {
+        joy.active = false;
+        joy.touchId = null;
+        joy.stickX = joy.baseX;
+        joy.stickY = joy.baseY;
+        joy.dx = 0;
+        joy.dy = 0;
+    }
+
+    if (isTouchDevice) {
+        joyZone.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (!joy.active) {
+                const touch = e.changedTouches[0];
+                joy.touchId = touch.identifier;
+                joy.active = true;
+                updateJoystick(touch);
+            }
+        }, {passive: false});
+
+        joyZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (joy.active) {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === joy.touchId) {
+                        updateJoystick(e.changedTouches[i]);
+                        break;
+                    }
+                }
+            }
+        }, {passive: false});
+
+        const endHandler = (e) => {
+            if (joy.active) {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === joy.touchId) {
+                        resetJoystick();
+                        break;
+                    }
+                }
+            }
+        };
+
+        joyZone.addEventListener('touchend', endHandler);
+        joyZone.addEventListener('touchcancel', endHandler);
     }
 
     function handlePlayerMovement() {
@@ -527,6 +612,34 @@
         gameState.entities.items.push({ x: p.x + dx, y: p.y, type: gameState.inventory });
         gameState.inventory = null; createParticles(p.x, p.y, "💨", 5); updateUI();
         if(gameState.quest.horse) updateQuestUI();
+    }
+    
+    // --- Schlaf Logik ---
+    function checkHouseSleep() {
+        if(gameState.sleeping) return;
+        const p = gameState.player;
+        const h = gameState.terrain.house;
+        if(h && p.x > h.x + 60 && p.x < h.x + h.w - 60 && p.y > h.y + h.h - 40 && p.y < h.y + h.h + 20) {
+            triggerSleep();
+        }
+    }
+    
+    function triggerSleep() {
+        gameState.sleeping = true;
+        Sound.playSleep();
+        document.getElementById('sleep-overlay').style.opacity = 1;
+        
+        setTimeout(() => {
+            gameState.time = 0.25; // Reset auf 6 Uhr morgens
+            gameState.player.stamina = 100;
+            gameState.player.x += 20; // Leicht versetzen damit man nicht instant wieder triggert
+            updateUI();
+            
+            setTimeout(() => {
+                document.getElementById('sleep-overlay').style.opacity = 0;
+                gameState.sleeping = false;
+            }, 1500);
+        }, 1500);
     }
 
     function updateHorses() {
@@ -854,17 +967,6 @@
                 ctx.save();
                 ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g;
                 ctx.beginPath(); ctx.arc(px, py, 150*gameState.zoom, 0, Math.PI*2); ctx.fill();
-                
-                // Fenster des Hauses beleuchten
-                if(gameState.terrain.house) {
-                    let hx = (gameState.terrain.house.x + gameState.terrain.house.w/2 - gameState.camX) * gameState.zoom + canvas.width/2;
-                    let hy = (gameState.terrain.house.y + gameState.terrain.house.h/2 - gameState.camY) * gameState.zoom + canvas.height/2;
-                    // Einfacher Lichtpunkt für Haus
-                    const gh = ctx.createRadialGradient(hx, hy, 10*gameState.zoom, hx, hy, 60*gameState.zoom);
-                    gh.addColorStop(0, "rgba(255, 255, 200, 0.5)"); gh.addColorStop(1, "rgba(0,0,0,0)");
-                    ctx.fillStyle = gh;
-                    ctx.beginPath(); ctx.arc(hx, hy, 60*gameState.zoom, 0, Math.PI*2); ctx.fill();
-                }
 
                 ctx.restore();
             }
@@ -883,6 +985,13 @@
         }
         
         if(isTouchDevice) drawJoystick();
+    }
+    
+    function drawJoystick() {
+        ctx.beginPath(); ctx.arc(joy.baseX, joy.baseY, joy.radius, 0, Math.PI*2);
+        ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 4; ctx.fill(); ctx.stroke();
+        let x = joy.active ? joy.stickX : joy.baseX; let y = joy.active ? joy.stickY : joy.baseY;
+        ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI*2); ctx.fillStyle = "white"; ctx.fill();
     }
 
     function drawHouse(ctx, h) {
@@ -906,6 +1015,7 @@
         ctx.beginPath(); ctx.moveTo(h.x-10, h.y); ctx.lineTo(h.x + h.w/2, h.y - 60); ctx.lineTo(h.x + h.w + 10, h.y); ctx.fill();
         
         // Door
+        // Tür offener gestalten damit man sieht dass man rein kann
         ctx.fillStyle = "#3e2723"; ctx.fillRect(h.x + h.w/2 - 15, h.y + h.h - 40, 30, 40);
         
         // Sign
@@ -1171,17 +1281,8 @@
         document.getElementById('customize-modal').style.display = 'none';
     }
 
-    const tz = document.getElementById('joystick-touch-zone');
-    if(isTouchDevice) {
-        tz.addEventListener('touchstart', (e)=>{e.preventDefault(); joy.active=true; mj(e.touches[0].clientX,e.touches[0].clientY)});
-        tz.addEventListener('touchmove', (e)=>{e.preventDefault(); mj(e.touches[0].clientX,e.touches[0].clientY)});
-        tz.addEventListener('touchend', ()=>{joy.active=false; joy.stickX=joy.baseX; joy.stickY=joy.baseY; joy.dx=0; joy.dy=0;});
-    }
-    function mj(cx, cy) {
-        let dx = cx - joy.baseX, dy = cy - joy.baseY, d = Math.hypot(dx,dy);
-        if(d>joy.radius) { let r = joy.radius/d; dx*=r; dy*=r; }
-        joy.stickX=joy.baseX+dx; joy.stickY=joy.baseY+dy; joy.dx=dx/joy.radius; joy.dy=dy/joy.radius;
-    }
+    const joyZone2 = document.getElementById('joystick-touch-zone');
+    // ... existing logic ... replaced by new joystick logic above
 
     window.addEventListener('keydown', e => {
         if(e.code === 'KeyW' || e.code === 'ArrowUp') keys.w = true;
