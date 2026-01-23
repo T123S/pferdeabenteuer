@@ -355,15 +355,54 @@
     function initUI() {
         const hint = document.getElementById('controls-hint');
         const mobActions = document.getElementById('mobile-actions');
-        const joyZone = document.getElementById('joystick-touch-zone');
+        // Lokale Variable, aber sicherstellen, dass sie existiert
+        const joystickElement = document.getElementById('joystick-touch-zone');
         
         if (!isTouchDevice) {
-            joyZone.style.display = 'none';
+            if(joystickElement) joystickElement.style.display = 'none';
             mobActions.style.display = 'none';
             hint.innerHTML = "<b>WASD</b> Bewegen | <b>Shift</b> Sprinten<br><b>Leertaste</b> Springen | <b>Q</b> oder <b>X</b> Ablegen";
         } else {
             mobActions.style.display = 'flex';
             hint.innerHTML = "Joystick zum Bewegen<br>Buttons für Aktionen";
+            
+            // Event Listener HIER registrieren, um globale Konflikte zu vermeiden
+            if(joystickElement) {
+                joystickElement.addEventListener('touchstart', (e) => { 
+                    e.preventDefault(); 
+                    if (!joy.active) { 
+                        const touch = e.changedTouches[0]; 
+                        joy.touchId = touch.identifier; 
+                        joy.active = true; 
+                        updateJoystick(touch); 
+                    } 
+                }, {passive: false});
+                
+                joystickElement.addEventListener('touchmove', (e) => { 
+                    e.preventDefault(); 
+                    if (joy.active) { 
+                        for (let i = 0; i < e.changedTouches.length; i++) { 
+                            if (e.changedTouches[i].identifier === joy.touchId) { 
+                                updateJoystick(e.changedTouches[i]); 
+                                break; 
+                            } 
+                        } 
+                    } 
+                }, {passive: false});
+                
+                const endHandler = (e) => { 
+                    if (joy.active) { 
+                        for (let i = 0; i < e.changedTouches.length; i++) { 
+                            if (e.changedTouches[i].identifier === joy.touchId) { 
+                                resetJoystick(); 
+                                break; 
+                            } 
+                        } 
+                    } 
+                };
+                joystickElement.addEventListener('touchend', endHandler); 
+                joystickElement.addEventListener('touchcancel', endHandler);
+            }
         }
         initShop();
     }
@@ -519,9 +558,7 @@
         requestAnimationFrame(loop);
     }
 
-    // --- Joystick Handling ---
-    const joyZone = document.getElementById('joystick-touch-zone');
-    
+    // --- Joystick Logic (Helpers) ---
     function updateJoystick(touch) {
         let dx = touch.clientX - joy.baseX; 
         let dy = touch.clientY - joy.baseY; 
@@ -546,43 +583,6 @@
         joy.stickY = joy.baseY; 
         joy.dx = 0; 
         joy.dy = 0; 
-    }
-    
-    if (isTouchDevice) {
-        joyZone.addEventListener('touchstart', (e) => { 
-            e.preventDefault(); 
-            if (!joy.active) { 
-                const touch = e.changedTouches[0]; 
-                joy.touchId = touch.identifier; 
-                joy.active = true; 
-                updateJoystick(touch); 
-            } 
-        }, {passive: false});
-        
-        joyZone.addEventListener('touchmove', (e) => { 
-            e.preventDefault(); 
-            if (joy.active) { 
-                for (let i = 0; i < e.changedTouches.length; i++) { 
-                    if (e.changedTouches[i].identifier === joy.touchId) { 
-                        updateJoystick(e.changedTouches[i]); 
-                        break; 
-                    } 
-                } 
-            } 
-        }, {passive: false});
-        
-        const endHandler = (e) => { 
-            if (joy.active) { 
-                for (let i = 0; i < e.changedTouches.length; i++) { 
-                    if (e.changedTouches[i].identifier === joy.touchId) { 
-                        resetJoystick(); 
-                        break; 
-                    } 
-                } 
-            } 
-        };
-        joyZone.addEventListener('touchend', endHandler); 
-        joyZone.addEventListener('touchcancel', endHandler);
     }
 
     function handlePlayerMovement() {
