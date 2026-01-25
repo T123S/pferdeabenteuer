@@ -57,6 +57,20 @@
         .action-circle { width: 70px; height: 70px; border-radius: 50%; background: rgba(255,255,255,0.3); border: 2px solid white; color: white; font-size: 30px; display: flex; justify-content: center; align-items: center; }
         .action-circle:active { background: rgba(255,255,255,0.6); }
 
+        /* Mobile D-Pad for Dressage */
+        #mobile-dpad { position: absolute; bottom: 30px; left: 30px; width: 160px; height: 160px; display: none; pointer-events: auto; }
+        .dpad-btn { position: absolute; width: 50px; height: 50px; background: rgba(255,255,255,0.3); border: 2px solid white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; color: white; }
+        .dpad-btn:active { background: rgba(255,255,255,0.6); transform: scale(0.95); }
+        .d-up { top: 0; left: 55px; }
+        .d-down { bottom: 0; left: 55px; }
+        .d-left { top: 55px; left: 0; }
+        .d-right { top: 55px; right: 0; }
+
+        /* Jump Button for Minigame */
+        #mobile-jump-only { position: absolute; bottom: 30px; right: 30px; display: none; pointer-events: auto; }
+        .big-jump-btn { width: 100px; height: 100px; background: rgba(231, 76, 60, 0.6); border: 4px solid white; border-radius: 50%; color: white; font-size: 40px; display: flex; justify-content: center; align-items: center; }
+        .big-jump-btn:active { background: rgba(231, 76, 60, 0.9); transform: scale(0.95); }
+
         /* Overlays */
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; color: white; z-index: 100; text-align: center; flex-direction: column; }
         
@@ -70,6 +84,14 @@
         .color-swatch { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #eee; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.1s; }
         .color-swatch.selected { border: 3px solid #000; transform: scale(1.15); box-shadow: 0 0 10px rgba(0,0,0,0.3); }
         
+        /* Highscore Specifics */
+        .input-group { margin: 15px 0; }
+        input[type="text"] { padding: 10px; border-radius: 10px; border: 2px solid #ddd; font-family: 'Fredoka', sans-serif; font-size: 18px; width: 60%; text-align: center; }
+        #highscore-list { margin-top: 20px; text-align: left; background: #f9f9f9; padding: 10px; border-radius: 10px; font-size: 16px; max-height: 150px; overflow-y: auto; }
+        .hs-entry { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; }
+        .hs-entry:last-child { border-bottom: none; }
+        .hs-rank { font-weight: bold; color: #e67e22; width: 30px; }
+
         h3 { margin: 10px 0 5px; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         #joystick-touch-zone { position: absolute; bottom: 30px; left: 30px; width: 160px; height: 160px; z-index: 20; border-radius: 50%; }
     </style>
@@ -125,6 +147,18 @@
             <button class="action-circle" onclick="handleMobileJump()">🦘</button>
             <button id="mobile-interact" class="action-circle" onclick="interact()" style="background:#f1c40f;">🖐️</button>
         </div>
+        
+        <!-- NEW: Mobile Controls for Minigames -->
+        <div id="mobile-dpad">
+            <div class="dpad-btn d-up" onclick="handleDressageInput('ArrowUp')">⬆️</div>
+            <div class="dpad-btn d-left" onclick="handleDressageInput('ArrowLeft')">⬅️</div>
+            <div class="dpad-btn d-right" onclick="handleDressageInput('ArrowRight')">➡️</div>
+            <div class="dpad-btn d-down" onclick="handleDressageInput('ArrowDown')">⬇️</div>
+        </div>
+        
+        <div id="mobile-jump-only">
+            <div class="big-jump-btn" onclick="handleJumpInput({})">🦘</div>
+        </div>
     </div>
     
     <div id="sleep-overlay">Gute Nacht! 🌙</div>
@@ -154,8 +188,17 @@
         <div class="modal-content">
             <h2>Ergebnis</h2>
             <div id="result-text" style="font-size:24px; margin:20px 0;"></div>
-            <div style="color:#f1c40f; font-size:30px; margin-bottom:20px;">+ <span id="result-stars">0</span> ⭐</div>
-            <button class="big-btn btn-green" onclick="returnToFarm()">Zurück zum Hof</button>
+            <div style="color:#f1c40f; font-size:30px; margin-bottom:10px;">+ <span id="result-stars">0</span> ⭐</div>
+            
+            <!-- Highscore Input -->
+            <div class="input-group" id="hs-input-group">
+                <input type="text" id="player-name" placeholder="Dein Name" maxlength="12">
+                <button class="btn-blue" style="padding: 10px 20px;" onclick="submitHighscore()">Speichern</button>
+            </div>
+            
+            <div id="highscore-list">Lade Highscores...</div>
+
+            <button class="big-btn btn-green" style="margin-top:20px;" onclick="returnToFarm()">Zurück zum Hof</button>
         </div>
     </div>
 
@@ -185,7 +228,17 @@
     <div id="joystick-touch-zone"></div>
     <canvas id="gameCanvas"></canvas>
 
-<script>
+<script type="module">
+    // --- Firebase Init ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    let db;
+    let auth;
+    let user;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    
     // --- Globale Variablen ---
     var joy = { active: false, touchId: null, baseX: 110, baseY: 0, stickX: 0, stickY: 0, dx: 0, dy: 0, radius: 50 };
     var keys = { w:false, a:false, s:false, d:false, Shift:false, Space:false, ArrowUp:false, ArrowDown:false, ArrowLeft:false, ArrowRight:false };
@@ -195,10 +248,84 @@
     try { const AC = window.AudioContext || window.webkitAudioContext; soundCtx = new AC(); } 
     catch(e) { soundEnabled = false; soundCtx = { state: 'suspended', resume:()=>{}, createOscillator:()=>({connect:()=>{},start:()=>{},stop:()=>{},type:'',frequency:{setValueAtTime:()=>{}}}), createGain:()=>({gain:{setValueAtTime:()=>{},exponentialRampToValueAtTime:()=>{}},connect:()=>{}}), destination:{}, currentTime:0, createBuffer:()=>{return{getChannelData:()=>{return[]}}}, createBufferSource:()=>{return{connect:()=>{},start:()=>{}}}, createBiquadFilter:()=>{return{connect:()=>{},frequency:{value:0}}} }; }
 
+    // --- Music System ---
+    const Music = {
+        timer: null,
+        noteIndex: 0,
+        currentTrack: null,
+        isPlaying: false,
+        
+        tracks: {
+            race: {
+                tempo: 120,
+                // Simple fast sequence
+                notes: [
+                    {f:220,d:0.15}, {f:0,d:0.05}, {f:220,d:0.15}, {f:0,d:0.05}, {f:293,d:0.3}, // A3 A3 D4
+                    {f:220,d:0.15}, {f:0,d:0.05}, {f:220,d:0.15}, {f:0,d:0.05}, {f:196,d:0.3}, // A3 A3 G3
+                    {f:220,d:0.15}, {f:261,d:0.15}, {f:293,d:0.15}, {f:329,d:0.15}, {f:392,d:0.4}, // Scale
+                    {f:0,d:0.2}
+                ],
+                type: 'sawtooth'
+            },
+            dressage: {
+                tempo: 600,
+                // Waltz-like simple melody
+                notes: [
+                    {f:392,d:0.4}, {f:523,d:0.4}, {f:659,d:0.4}, // G4 C5 E5
+                    {f:587,d:0.4}, {f:523,d:0.4}, {f:493,d:0.4}, // D5 C5 B4
+                    {f:392,d:0.4}, {f:329,d:0.4}, {f:392,d:0.4}, // G4 E4 G4
+                    {f:523,d:0.8}, {f:0,d:0.4}
+                ],
+                type: 'triangle'
+            }
+        },
+
+        play: (trackName) => {
+            if(!soundEnabled) return;
+            Music.stop();
+            const track = Music.tracks[trackName];
+            if(!track) return;
+            
+            Music.currentTrack = track;
+            Music.isPlaying = true;
+            Music.noteIndex = 0;
+            Music.tick();
+        },
+
+        tick: () => {
+            if(!Music.isPlaying || !Music.currentTrack) return;
+            const note = Music.currentTrack.notes[Music.noteIndex];
+            
+            if(note.f > 0) {
+                try {
+                    const o = soundCtx.createOscillator();
+                    const g = soundCtx.createGain();
+                    o.type = Music.currentTrack.type || 'sine';
+                    o.frequency.setValueAtTime(note.f, soundCtx.currentTime);
+                    g.gain.setValueAtTime(0.05, soundCtx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, soundCtx.currentTime + note.d);
+                    o.connect(g);
+                    g.connect(soundCtx.destination);
+                    o.start();
+                    o.stop(soundCtx.currentTime + note.d);
+                } catch(e){}
+            }
+            
+            Music.noteIndex = (Music.noteIndex + 1) % Music.currentTrack.notes.length;
+            Music.timer = setTimeout(Music.tick, note.d * 1000 * (600/Music.currentTrack.tempo)); // Adjust speed based on tempo
+        },
+
+        stop: () => {
+            Music.isPlaying = false;
+            if(Music.timer) clearTimeout(Music.timer);
+        }
+    };
+
     function toggleSound() {
         soundEnabled = !soundEnabled;
         document.getElementById('sound-btn').innerText = soundEnabled ? "🔊" : "🔇";
         if(soundEnabled && soundCtx.state === 'suspended') soundCtx.resume();
+        if(!soundEnabled) Music.stop();
     }
     
     const Sound = {
@@ -277,6 +404,26 @@
             joystickElement.addEventListener('touchend', end); joystickElement.addEventListener('touchcancel', end); joystickElement.addEventListener('touchleave', end);
         }
         initShop();
+        
+        // Init Firebase
+        if(typeof __firebase_config !== 'undefined') {
+            try {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    user = auth.currentUser;
+                };
+                initAuth();
+            } catch(e) { console.warn("Firebase Init Error", e); }
+        }
         
         // --- CLICK HANDLER FOR TENT ---
         canvas.addEventListener('click', (e) => {
@@ -447,11 +594,15 @@
         const p = gameState.player;
         let dx = 0, dy = 0;
         
-        if(joy.active) { dx = joy.dx; dy = joy.dy; } 
+        if(joy.active) { 
+            // Dampen joystick speed
+            dx = joy.dx * 0.6; 
+            dy = joy.dy * 0.6; 
+        } 
         else {
             if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1; 
             if(keys.a || keys.ArrowLeft) dx = -1; if(keys.d || keys.ArrowRight) dx = 1; 
-            if (dx !== 0 || dy !== 0) { let length = Math.hypot(dx, dy); dx /= length; dy /= length; }
+            if (dx !== 0 || dy !== 0) { let length = Math.hypot(dx, dy); dx /= length; dy /= length; dy /= length; }
         }
 
         let speed = p.speed;
@@ -516,6 +667,18 @@
         document.querySelectorAll('.context-hint').forEach(el => el.style.display = 'none');
         document.getElementById('quest-box').style.display = 'none';
         
+        // Hide Joystick in Minigames
+        document.getElementById('joystick-touch-zone').style.display = 'none';
+
+        // --- MOBILE CONTROLS VISIBILITY ---
+        document.getElementById('mobile-dpad').style.display = (isTouchDevice && mode === MODES.DRESSAGE) ? 'block' : 'none';
+        document.getElementById('mobile-jump-only').style.display = (isTouchDevice && mode === MODES.JUMP) ? 'block' : 'none';
+        
+        // Race mode handles touches globally, no specific button needed (or we can use the jump one)
+        if(isTouchDevice && mode === MODES.RACE) {
+            document.getElementById('mg-info').innerText = "Tippe auf den Bildschirm!";
+        }
+
         // --- KEYBOARD FOCUS FIX ---
         canvas.focus(); // Force focus to canvas to ensure keys work immediately
 
@@ -525,20 +688,91 @@
     }
 
     function endMinigame(stars, msg) {
+        Music.stop(); // Stop Music!
         gameState.minigame.state = 'end';
         document.getElementById('result-screen').style.display = 'flex';
         document.getElementById('result-text').innerText = msg;
         document.getElementById('result-stars').innerText = stars;
         gameState.stars += stars;
+        
+        // Load Highscores for this mode
+        document.getElementById('hs-input-group').style.display = 'block';
+        document.getElementById('player-name').value = localStorage.getItem('playerName') || '';
+        loadHighscores();
+    }
+    
+    // --- Highscore Logic ---
+    function loadHighscores() {
+        if(!db) { document.getElementById('highscore-list').innerText = "Highscores nur online verfügbar."; return; }
+        let modeName = gameState.mode === MODES.RACE ? 'race' : (gameState.mode === MODES.JUMP ? 'jump' : 'dressage');
+        
+        document.getElementById('highscore-list').innerHTML = "Lade...";
+        
+        try {
+            const q = collection(db, 'artifacts', appId, 'public', 'data', 'highscores');
+            // Rule 2 compliant: No compound queries. We filter in memory.
+            onSnapshot(q, (snapshot) => {
+                const scores = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if(data.mode === modeName) scores.push(data);
+                });
+                
+                scores.sort((a,b) => b.score - a.score);
+                const top5 = scores.slice(0,5);
+                
+                let html = "";
+                top5.forEach((s, i) => {
+                    html += `<div class="hs-entry"><span class="hs-rank">#${i+1}</span> <span>${s.name}</span> <span>${s.score}</span></div>`;
+                });
+                if(scores.length === 0) html = "Noch keine Highscores.";
+                document.getElementById('highscore-list').innerHTML = html;
+            }, (error) => {
+                 console.error("HS Error", error);
+                 document.getElementById('highscore-list').innerText = "Fehler beim Laden.";
+            });
+        } catch(e) {
+            console.error(e);
+        }
+    }
+    
+    function submitHighscore() {
+        if(!db || !user) { alert("Nicht verbunden!"); return; }
+        const name = document.getElementById('player-name').value;
+        if(!name) { alert("Bitte Namen eingeben!"); return; }
+        
+        localStorage.setItem('playerName', name); // Cache name
+        let modeName = gameState.mode === MODES.RACE ? 'race' : (gameState.mode === MODES.JUMP ? 'jump' : 'dressage');
+        
+        // Hide button to prevent double submit
+        document.getElementById('hs-input-group').style.display = 'none';
+        
+        addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'highscores'), {
+            name: name,
+            score: gameState.minigame.score,
+            mode: modeName,
+            timestamp: Date.now()
+        }).then(() => {
+            // Success msg handled by onSnapshot update
+        });
     }
 
     function returnToFarm() {
         closeModals();
+        Music.stop();
         gameState.mode = MODES.WORLD;
         gameState.minigame.active = false;
         document.getElementById('minigame-hud').style.display = 'none';
         document.getElementById('ui-layer').querySelector('.hud-left').style.display='flex';
         document.getElementById('result-screen').style.display = 'none'; // Ensure result screen is closed
+        
+        // Reset Mobile UI
+        if(isTouchDevice) {
+            document.getElementById('joystick-touch-zone').style.display = 'block';
+            document.getElementById('mobile-dpad').style.display = 'none';
+            document.getElementById('mobile-jump-only').style.display = 'none';
+        }
+        
         generateWorld(); 
     }
 
@@ -563,7 +797,12 @@
     function updateRace() {
         if(gameState.minigame.state === 'warmup') {
             gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown);
-            if(gameState.minigame.countdown <= 0) { gameState.minigame.state = 'play'; document.getElementById('mg-info').innerText = "LOS!"; } return;
+            if(gameState.minigame.countdown <= 0) { 
+                gameState.minigame.state = 'play'; 
+                document.getElementById('mg-info').innerText = "LOS!"; 
+                Music.play('race'); // START MUSIC
+            } 
+            return;
         }
         if(gameState.minigame.state !== 'play') return;
 
@@ -583,12 +822,26 @@
         let dist = 5000;
         let pPct = Math.floor((gameState.player.x / dist)*100);
         document.getElementById('mg-score').innerText = pPct + "%";
+        
+        // Use percentage as score for highscore in race
+        gameState.minigame.score = pPct;
 
         if(gameState.player.x >= dist) {
+            gameState.minigame.score = 100 + Math.floor(gameState.player.stamina); // Bonus score
             let rank = 1; for(let op of gameState.minigame.opponents) if(op.x > gameState.player.x) rank++;
             let stars = rank === 1 ? 5 : (rank === 2 ? 3 : 1); endMinigame(stars, "Platz " + rank + "!");
         }
     }
+    
+    // Add Mobile Tap for Race
+    canvas.addEventListener('touchstart', (e) => {
+        if(gameState.mode === MODES.RACE && gameState.minigame.state === 'play') {
+            e.preventDefault();
+            gameState.player.x += 15; // Turbo boost on tap
+            gameState.player.animFrame += 1;
+        }
+    }, {passive: false});
+
 
     // --- 2. JUMP MODE ---
     function setupJump() {
@@ -625,7 +878,7 @@
         
         // Check Inputs (Direct trigger)
         if ((keys.Space || keys.ArrowUp) && gameState.player.z === 0) { 
-            gameState.player.vz = 20; // High Jump Velocity
+            gameState.player.vz = 14; // REDUCED HEIGHT (was 20)
             Sound.playJump(); 
             // Reset keys to prevent flutter
             keys.Space = false; 
@@ -659,7 +912,7 @@
     // Add Click/Touch Jump Listener (Reliable Fallback)
     const handleJumpInput = (e) => {
         if(gameState.mode === MODES.JUMP && gameState.minigame.state === 'play' && gameState.player.z === 0) {
-            gameState.player.vz = 20; 
+            gameState.player.vz = 14; // REDUCED HEIGHT
             Sound.playJump();
         }
     };
@@ -675,6 +928,12 @@
         gameState.minigame.feedbackText = null;
         document.getElementById('mg-info').innerText = "Drücke Pfeiltasten im Takt!";
     }
+    
+    // Helper for Mobile Dressage
+    function handleDressageInput(key) {
+        keys[key] = true;
+        setTimeout(() => keys[key] = false, 100);
+    }
 
     function updateDressage() {
         if(gameState.minigame.state === 'warmup') {
@@ -682,6 +941,7 @@
              if(gameState.minigame.countdown <= 0) {
                  gameState.minigame.state = 'play';
                  document.getElementById('mg-info').innerText = "Drücke Pfeiltasten im goldenen Ring!";
+                 Music.play('dressage'); // START MUSIC
              }
              return;
         }
@@ -1055,7 +1315,26 @@
     function buyItem(item) { if(gameState.stars >= item.cost) { gameState.stars -= item.cost; Sound.playSuccess(); gameState.entities.decorations.push({ x: gameState.player.x + (Math.random()-0.5)*100, y: gameState.player.y + (Math.random()-0.5)*100, emoji: item.emoji }); updateUI(); closeModals(); } else { alert("Nicht genug Sterne!"); } }
 
     window.addEventListener('resize', resize); resize(); initUI();
-    console.log("Pferdehof Deluxe v3.9: Minigame Physics & UI Fixes");
+    
+    // EXPOSE TO WINDOW FOR HTML ONCLICK
+    window.startGame = startGame;
+    window.toggleSound = toggleSound;
+    window.dropItem = dropItem;
+    window.openCustomize = openCustomize;
+    window.openShop = openShop;
+    window.toggleTrainingMenu = toggleTrainingMenu;
+    window.changeZoom = changeZoom;
+    window.commandFoal = commandFoal;
+    window.handleMobileJump = handleMobileJump;
+    window.interact = interact;
+    window.closeModals = closeModals;
+    window.startMinigame = startMinigame;
+    window.returnToFarm = returnToFarm;
+    window.submitHighscore = submitHighscore;
+    window.handleDressageInput = handleDressageInput;
+    window.handleJumpInput = handleJumpInput;
+    
+    console.log("Pferdehof Deluxe v4.1: Mobile Minigame Controls Fixed");
 </script>
 </body>
 </html>
