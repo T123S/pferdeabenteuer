@@ -57,15 +57,6 @@
         .action-circle { width: 70px; height: 70px; border-radius: 50%; background: rgba(255,255,255,0.3); border: 2px solid white; color: white; font-size: 30px; display: flex; justify-content: center; align-items: center; }
         .action-circle:active { background: rgba(255,255,255,0.6); }
 
-        /* Mobile D-Pad for Dressage */
-        #mobile-dpad { position: absolute; bottom: 30px; left: 30px; width: 160px; height: 160px; display: none; pointer-events: auto; }
-        .dpad-btn { position: absolute; width: 50px; height: 50px; background: rgba(255,255,255,0.3); border: 2px solid white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; color: white; }
-        .dpad-btn:active { background: rgba(255,255,255,0.6); transform: scale(0.95); }
-        .d-up { top: 0; left: 55px; }
-        .d-down { bottom: 0; left: 55px; }
-        .d-left { top: 55px; left: 0; }
-        .d-right { top: 55px; right: 0; }
-
         /* Jump Button for Minigame */
         #mobile-jump-only { position: absolute; bottom: 30px; right: 30px; display: none; pointer-events: auto; }
         .big-jump-btn { width: 100px; height: 100px; background: rgba(231, 76, 60, 0.6); border: 4px solid white; border-radius: 50%; color: white; font-size: 40px; display: flex; justify-content: center; align-items: center; }
@@ -146,14 +137,6 @@
         <div id="mobile-actions" style="display:none;">
             <button class="action-circle" onclick="handleMobileJump()">🦘</button>
             <button id="mobile-interact" class="action-circle" onclick="interact()" style="background:#f1c40f;">🖐️</button>
-        </div>
-        
-        <!-- NEW: Mobile Controls for Minigames -->
-        <div id="mobile-dpad">
-            <div class="dpad-btn d-up" onclick="handleDressageInput('ArrowUp')">⬆️</div>
-            <div class="dpad-btn d-left" onclick="handleDressageInput('ArrowLeft')">⬅️</div>
-            <div class="dpad-btn d-right" onclick="handleDressageInput('ArrowRight')">➡️</div>
-            <div class="dpad-btn d-down" onclick="handleDressageInput('ArrowDown')">⬇️</div>
         </div>
         
         <div id="mobile-jump-only">
@@ -240,7 +223,7 @@
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     
     // --- Globale Variablen ---
-    var joy = { active: false, touchId: null, baseX: 110, baseY: 0, stickX: 0, stickY: 0, dx: 0, dy: 0, radius: 50 };
+    var joy = { active: false, touchId: null, baseX: 110, baseY: 0, stickX: 0, stickY: 0, dx: 0, dy: 0, radius: 50, lastDir: null, triggerReset: true };
     var keys = { w:false, a:false, s:false, d:false, Shift:false, Space:false, ArrowUp:false, ArrowDown:false, ArrowLeft:false, ArrowRight:false };
 
     // --- Audio Init ---
@@ -400,7 +383,7 @@
             };
             joystickElement.addEventListener('touchstart', (e) => { e.preventDefault(); joy.active=true; joy.touchId=e.changedTouches[0].identifier; updateJoy(e.changedTouches[0]); }, {passive: false});
             joystickElement.addEventListener('touchmove', (e) => { e.preventDefault(); if (joy.active) for (let t of e.changedTouches) if (t.identifier === joy.touchId) updateJoy(t); }, {passive: false});
-            const end = (e) => { for (let t of e.changedTouches) if (t.identifier === joy.touchId) { joy.active=false; joy.stickX=joy.baseX; joy.stickY=joy.baseY; joy.dx=0; joy.dy=0; } };
+            const end = (e) => { for (let t of e.changedTouches) if (t.identifier === joy.touchId) { joy.active=false; joy.stickX=joy.baseX; joy.stickY=joy.baseY; joy.dx=0; joy.dy=0; joy.triggerReset=true; } };
             joystickElement.addEventListener('touchend', end); joystickElement.addEventListener('touchcancel', end); joystickElement.addEventListener('touchleave', end);
         }
         initShop();
@@ -650,37 +633,36 @@
         closeModals();
         gameState.minigame.active = true;
         
-        // CORRECTION: Map string to INT mode
         let mode = MODES.WORLD;
         if(typeString === 'race') mode = MODES.RACE;
         else if(typeString === 'jump') mode = MODES.JUMP;
         else if(typeString === 'dressage') mode = MODES.DRESSAGE;
         
-        gameState.mode = mode; // Set global mode
+        gameState.mode = mode;
         gameState.minigame.score = 0;
         gameState.minigame.timer = 0; gameState.minigame.state = 'warmup'; gameState.minigame.countdown = 3;
         
         document.getElementById('minigame-hud').style.display = 'block'; 
         document.getElementById('ui-layer').querySelector('.hud-left').style.display='none';
         
-        // Hide hints AND Quest Box (Fix for Speech Bubbles)
+        // Hide hints AND Quest Box
         document.querySelectorAll('.context-hint').forEach(el => el.style.display = 'none');
         document.getElementById('quest-box').style.display = 'none';
         
-        // Hide Joystick in Minigames
-        document.getElementById('joystick-touch-zone').style.display = 'none';
-
         // --- MOBILE CONTROLS VISIBILITY ---
-        document.getElementById('mobile-dpad').style.display = (isTouchDevice && mode === MODES.DRESSAGE) ? 'block' : 'none';
+        // Hide Joystick default, show for World, Race, Dressage
+        let showJoystick = (isTouchDevice && (mode === MODES.WORLD || mode === MODES.RACE || mode === MODES.DRESSAGE));
+        document.getElementById('joystick-touch-zone').style.display = showJoystick ? 'block' : 'none';
+
         document.getElementById('mobile-jump-only').style.display = (isTouchDevice && mode === MODES.JUMP) ? 'block' : 'none';
         
-        // Race mode handles touches globally, no specific button needed (or we can use the jump one)
         if(isTouchDevice && mode === MODES.RACE) {
-            document.getElementById('mg-info').innerText = "Tippe auf den Bildschirm!";
+            document.getElementById('mg-info').innerText = "Joystick: Lenken & Gas!";
+        } else if(isTouchDevice && mode === MODES.DRESSAGE) {
+            document.getElementById('mg-info').innerText = "Joystick schnippen!";
         }
 
-        // --- KEYBOARD FOCUS FIX ---
-        canvas.focus(); // Force focus to canvas to ensure keys work immediately
+        canvas.focus(); 
 
         if(mode === MODES.RACE) setupRace();
         else if(mode === MODES.JUMP) setupJump();
@@ -688,14 +670,13 @@
     }
 
     function endMinigame(stars, msg) {
-        Music.stop(); // Stop Music!
+        Music.stop(); 
         gameState.minigame.state = 'end';
         document.getElementById('result-screen').style.display = 'flex';
         document.getElementById('result-text').innerText = msg;
         document.getElementById('result-stars').innerText = stars;
         gameState.stars += stars;
         
-        // Load Highscores for this mode
         document.getElementById('hs-input-group').style.display = 'block';
         document.getElementById('player-name').value = localStorage.getItem('playerName') || '';
         loadHighscores();
@@ -710,7 +691,6 @@
         
         try {
             const q = collection(db, 'artifacts', appId, 'public', 'data', 'highscores');
-            // Rule 2 compliant: No compound queries. We filter in memory.
             onSnapshot(q, (snapshot) => {
                 const scores = [];
                 snapshot.forEach(doc => {
@@ -741,10 +721,9 @@
         const name = document.getElementById('player-name').value;
         if(!name) { alert("Bitte Namen eingeben!"); return; }
         
-        localStorage.setItem('playerName', name); // Cache name
+        localStorage.setItem('playerName', name); 
         let modeName = gameState.mode === MODES.RACE ? 'race' : (gameState.mode === MODES.JUMP ? 'jump' : 'dressage');
         
-        // Hide button to prevent double submit
         document.getElementById('hs-input-group').style.display = 'none';
         
         addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'highscores'), {
@@ -752,9 +731,7 @@
             score: gameState.minigame.score,
             mode: modeName,
             timestamp: Date.now()
-        }).then(() => {
-            // Success msg handled by onSnapshot update
-        });
+        }).then(() => { });
     }
 
     function returnToFarm() {
@@ -764,12 +741,10 @@
         gameState.minigame.active = false;
         document.getElementById('minigame-hud').style.display = 'none';
         document.getElementById('ui-layer').querySelector('.hud-left').style.display='flex';
-        document.getElementById('result-screen').style.display = 'none'; // Ensure result screen is closed
+        document.getElementById('result-screen').style.display = 'none';
         
-        // Reset Mobile UI
         if(isTouchDevice) {
             document.getElementById('joystick-touch-zone').style.display = 'block';
-            document.getElementById('mobile-dpad').style.display = 'none';
             document.getElementById('mobile-jump-only').style.display = 'none';
         }
         
@@ -782,16 +757,14 @@
         gameState.minigame.opponents = [ {x:100, y:200, speed: 7, color: '#333', rank:0}, {x:100, y:400, speed: 7.5, color: '#aaa', rank:0}, {x:100, y:500, speed: 6.8, color: '#630', rank:0} ];
         gameState.minigame.objects = []; 
         
-        // Random obstacles
         for(let i=0; i<20; i++) gameState.minigame.objects.push({x: 500 + Math.random()*4000, y: 150 + Math.random()*400, w:40, h:40, type:'box'});
         
-        // Top and Bottom Barriers (Anti-Cheat)
         for(let i=0; i<60; i++) {
-             gameState.minigame.objects.push({x: i*100, y: 100, w: 40, h: 40, type:'hay'}); // Top edge
-             gameState.minigame.objects.push({x: i*100, y: 600, w: 40, h: 40, type:'hay'}); // Bottom edge
+             gameState.minigame.objects.push({x: i*100, y: 100, w: 40, h: 40, type:'hay'}); 
+             gameState.minigame.objects.push({x: i*100, y: 600, w: 40, h: 40, type:'hay'}); 
         }
         
-        document.getElementById('mg-info').innerText = "Drücke so schnell du kannst!";
+        document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick: Rechts=Gas!" : "Drücke so schnell du kannst!";
     }
 
     function updateRace() {
@@ -800,18 +773,23 @@
             if(gameState.minigame.countdown <= 0) { 
                 gameState.minigame.state = 'play'; 
                 document.getElementById('mg-info').innerText = "LOS!"; 
-                Music.play('race'); // START MUSIC
+                Music.play('race'); 
             } 
             return;
         }
         if(gameState.minigame.state !== 'play') return;
 
         let dx = 0; let dy = 0;
-        if(keys.d || keys.ArrowRight) dx = 1; if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1;
+        if(joy.active) {
+            if(joy.dx > 0.2) dx = 1; // Gas
+            if(Math.abs(joy.dy) > 0.2) dy = joy.dy; // Steer
+        } else {
+            if(keys.d || keys.ArrowRight) dx = 1; if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1;
+        }
         
-        gameState.player.x += (gameState.player.speed + (keys.Shift?2:0)); gameState.player.y += dy * 4;
+        gameState.player.x += (gameState.player.speed + (dx > 0 ? (keys.Shift ? 2 : 1) * dx * 2 : 0)); 
+        gameState.player.y += dy * 4;
         
-        // BOUNDARY CHECK
         gameState.player.y = Math.max(120, Math.min(580, gameState.player.y));
         
         gameState.player.animFrame += 0.3;
@@ -823,25 +801,14 @@
         let pPct = Math.floor((gameState.player.x / dist)*100);
         document.getElementById('mg-score').innerText = pPct + "%";
         
-        // Use percentage as score for highscore in race
         gameState.minigame.score = pPct;
 
         if(gameState.player.x >= dist) {
-            gameState.minigame.score = 100 + Math.floor(gameState.player.stamina); // Bonus score
+            gameState.minigame.score = 100 + Math.floor(gameState.player.stamina); 
             let rank = 1; for(let op of gameState.minigame.opponents) if(op.x > gameState.player.x) rank++;
             let stars = rank === 1 ? 5 : (rank === 2 ? 3 : 1); endMinigame(stars, "Platz " + rank + "!");
         }
     }
-    
-    // Add Mobile Tap for Race
-    canvas.addEventListener('touchstart', (e) => {
-        if(gameState.mode === MODES.RACE && gameState.minigame.state === 'play') {
-            e.preventDefault();
-            gameState.player.x += 15; // Turbo boost on tap
-            gameState.player.animFrame += 1;
-        }
-    }, {passive: false});
-
 
     // --- 2. JUMP MODE ---
     function setupJump() {
@@ -849,7 +816,7 @@
         gameState.player.z = 0; // Force reset Z
         gameState.player.vz = 0;
         gameState.minigame.objects = []; for(let i=1; i<=10; i++) gameState.minigame.objects.push({x: i * 400, type: 'fence', cleared: false});
-        document.getElementById('mg-info').innerText = "Pfeil Oben oder Tippen!";
+        document.getElementById('mg-info').innerText = isTouchDevice ? "Tippe den Button!" : "Pfeil Oben oder Tippen!";
     }
 
     function updateJump() {
@@ -865,27 +832,22 @@
 
         gameState.player.x += 8; gameState.player.animFrame += 0.3;
         
-        // --- IMPROVED JUMP LOGIC ---
-        // Apply physics
         if(gameState.player.z > 0 || gameState.player.vz !== 0) {
             gameState.player.z += gameState.player.vz; 
-            gameState.player.vz -= 0.8; // Gravity
+            gameState.player.vz -= 0.8; 
             if(gameState.player.z <= 0) { 
                 gameState.player.z = 0; 
                 gameState.player.vz = 0; 
             }
         } 
         
-        // Check Inputs (Direct trigger)
         if ((keys.Space || keys.ArrowUp) && gameState.player.z === 0) { 
-            gameState.player.vz = 14; // REDUCED HEIGHT (was 20)
+            gameState.player.vz = 14; 
             Sound.playJump(); 
-            // Reset keys to prevent flutter
             keys.Space = false; 
             keys.ArrowUp = false;
         }
 
-        // Show Jump Hint when near obstacle
         let nearObs = gameState.minigame.objects.find(o => !o.cleared && o.x - gameState.player.x < 250 && o.x - gameState.player.x > 0);
         if(nearObs) {
              document.getElementById('mg-info').innerText = "JETZT SPRINGEN!";
@@ -909,15 +871,13 @@
         }
     }
     
-    // Add Click/Touch Jump Listener (Reliable Fallback)
     const handleJumpInput = (e) => {
         if(gameState.mode === MODES.JUMP && gameState.minigame.state === 'play' && gameState.player.z === 0) {
-            gameState.player.vz = 14; // REDUCED HEIGHT
+            gameState.player.vz = 14; 
             Sound.playJump();
         }
     };
-    canvas.addEventListener('mousedown', handleJumpInput);
-    canvas.addEventListener('touchstart', handleJumpInput, {passive: true});
+    // canvas.addEventListener('mousedown', handleJumpInput); // Handled by button on mobile
 
     // --- 3. DRESSAGE MODE ---
     const DRESSAGE_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
@@ -926,10 +886,9 @@
         gameState.minigame.objects = []; gameState.minigame.timer = 0;
         gameState.minigame.dressageOffset = {x:0, y:0};
         gameState.minigame.feedbackText = null;
-        document.getElementById('mg-info').innerText = "Drücke Pfeiltasten im Takt!";
+        document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick nutzen!" : "Drücke Pfeiltasten im Takt!";
     }
     
-    // Helper for Mobile Dressage
     function handleDressageInput(key) {
         keys[key] = true;
         setTimeout(() => keys[key] = false, 100);
@@ -940,22 +899,39 @@
              gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = "Gleich gehts los!";
              if(gameState.minigame.countdown <= 0) {
                  gameState.minigame.state = 'play';
-                 document.getElementById('mg-info').innerText = "Drücke Pfeiltasten im goldenen Ring!";
-                 Music.play('dressage'); // START MUSIC
+                 document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick in Pfeilrichtung!" : "Drücke Pfeiltasten im goldenen Ring!";
+                 Music.play('dressage'); 
              }
              return;
         }
         if(gameState.minigame.state !== 'play') return;
 
         gameState.minigame.timer++;
-        // Slower Spawn (every 60 frames instead of 40)
         if(gameState.minigame.timer % 60 === 0) { let k = DRESSAGE_KEYS[Math.floor(Math.random()*4)]; gameState.minigame.objects.push({key: k, y: 0, hit: false}); }
         let targetY = canvas.height - 100; 
         
-        // Slower Fall Speed (3 instead of 5)
         for(let arr of gameState.minigame.objects) { arr.y += 3; }
 
         let inputKey = null;
+
+        // Joystick Logic for Dressage
+        if(joy.active) {
+            let threshold = 0.5;
+            // Only trigger if we reset or changed direction significantly
+            if (joy.triggerReset) {
+                if (joy.dy < -threshold) { inputKey = 'ArrowUp'; joy.triggerReset = false; }
+                else if (joy.dy > threshold) { inputKey = 'ArrowDown'; joy.triggerReset = false; }
+                else if (joy.dx < -threshold) { inputKey = 'ArrowLeft'; joy.triggerReset = false; }
+                else if (joy.dx > threshold) { inputKey = 'ArrowRight'; joy.triggerReset = false; }
+            } else {
+                // Check if returned to center
+                if (Math.abs(joy.dx) < 0.2 && Math.abs(joy.dy) < 0.2) {
+                    joy.triggerReset = true;
+                }
+            }
+        }
+
+        // Keyboard Logic
         if(keys.w) { inputKey = 'ArrowUp'; keys.w = false; }
         else if(keys.ArrowUp) { inputKey = 'ArrowUp'; keys.ArrowUp = false; }
         else if(keys.s) { inputKey = 'ArrowDown'; keys.s = false; }
@@ -965,34 +941,28 @@
         else if(keys.d) { inputKey = 'ArrowRight'; keys.d = false; }
         else if(keys.ArrowRight) { inputKey = 'ArrowRight'; keys.ArrowRight = false; }
 
-        // Animation Decay
         gameState.minigame.dressageOffset.x *= 0.9;
         gameState.minigame.dressageOffset.y *= 0.9;
         if(gameState.player.z > 0) { gameState.player.z -= 2; }
 
         if(inputKey) {
-            // Visual Movement Feedback
             if(inputKey === 'ArrowLeft') gameState.minigame.dressageOffset.x = -80;
             if(inputKey === 'ArrowRight') gameState.minigame.dressageOffset.x = 80;
-            if(inputKey === 'ArrowUp') gameState.player.z = 60; // Rear up visual
-            if(inputKey === 'ArrowDown') gameState.minigame.dressageOffset.y = 40; // Bow down
+            if(inputKey === 'ArrowUp') gameState.player.z = 60; 
+            if(inputKey === 'ArrowDown') gameState.minigame.dressageOffset.y = 40; 
 
-            // Logic Check - Increased Window
             let closest = gameState.minigame.objects.find(a => !a.hit && Math.abs(a.y - targetY) < 60); 
             if(closest && closest.key === inputKey) { 
                 closest.hit = true; gameState.minigame.score += 50; 
                 Sound.playSuccess(); gameState.player.animFrame += 1; 
                 createParticles(canvas.width/2, targetY, "✨", 5);
                 gameState.minigame.feedbackText = { text: "Perfekt!", alpha: 1.0, y: targetY - 50 };
-                // Visual Hop on Hit
                 gameState.player.vz = 5; 
             } else {
-                 // Missed
                  gameState.minigame.feedbackText = { text: "Ups!", alpha: 1.0, y: targetY - 50 };
             }
         }
         
-        // Hop Physics
         if(gameState.player.z > 0 || gameState.player.vz !== 0) {
             gameState.player.z += gameState.player.vz;
             gameState.player.vz -= 1;
@@ -1051,7 +1021,7 @@
         else if(gameState.mode === MODES.JUMP) drawJump();
         else if(gameState.mode === MODES.DRESSAGE) drawDressage();
         
-        if(isTouchDevice && gameState.mode === MODES.WORLD) drawJoystick();
+        if(isTouchDevice && (gameState.mode === MODES.WORLD || gameState.mode === MODES.RACE || gameState.mode === MODES.DRESSAGE)) drawJoystick();
     }
 
     function drawWorld() {
