@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pferdehof Abenteuer</title>
     
-    <!-- PWA Verknüpfungen -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐴</text></svg>">
     <meta name="theme-color" content="#7BC043">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,182 +13,65 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
 
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #2c3e50;
-            font-family: 'Fredoka', sans-serif;
-            touch-action: none;
-            user-select: none;
-            -webkit-user-select: none;
-        }
+        body { margin: 0; overflow: hidden; background-color: #2c3e50; font-family: 'Fredoka', sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+        #gameCanvas { display: block; margin: 0 auto; outline: none; }
 
-        #gameCanvas {
-            display: block;
-            margin: 0 auto;
-            outline: none;
-        }
+        /* UI Layer */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); font-size: 18px; z-index: 10; }
 
-        /* --- UI Layer --- */
-        #ui-layer {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            color: #fff;
-            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
-            font-size: 18px;
-            z-index: 10;
-        }
-
-        /* Oben Links: Stats & Energie */
-        .hud-left {
-            position: absolute; top: 10px; left: 10px;
-            display: flex; flex-direction: column; gap: 8px;
-        }
-
+        .hud-left { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 8px; }
         .hud-row { display: flex; align-items: center; gap: 10px; }
+        .hud-item { background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 25px; display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2); }
         
-        .hud-item {
-            background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 25px;
-            display: inline-flex; align-items: center; gap: 8px;
-            backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        /* Input Debugger (Klein unter HUD) */
-        #input-debug {
-            font-size: 10px; color: rgba(255,255,255,0.7); 
-            margin-left: 10px; font-family: monospace;
-        }
-
-        /* Energie Balken */
-        #stamina-container {
-            width: 150px; height: 10px; background: rgba(0,0,0,0.5);
-            border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3);
-            margin-top: 5px;
-        }
-        #stamina-bar {
-            width: 100%; height: 100%; background: #f1c40f; transition: width 0.1s;
-        }
-
-        /* Oben Rechts: Buttons */
-        .hud-right {
-            position: absolute; top: 10px; right: 10px;
-            display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
-            pointer-events: auto;
-        }
-
-        /* Oben Mitte: Quest */
-        #quest-box {
-            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95); padding: 10px 20px;
-            border-radius: 15px; border-left: 5px solid #FFD700; color: #333;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-size: 18px; max-width: 300px;
-            pointer-events: none; display: none; text-shadow: none; text-align: center;
-        }
+        #stamina-container { width: 150px; height: 10px; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3); margin-top: 5px; }
+        #stamina-bar { width: 100%; height: 100%; background: #f1c40f; transition: width 0.1s; }
         
-        /* Context Hints */
-        .context-hint {
-            position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px;
-            border-radius: 20px; display: none; font-size: 20px;
-            animation: pulse 1s infinite; pointer-events: none; white-space: nowrap;
-        }
+        /* Minigame HUD */
+        #minigame-hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; pointer-events: none; }
+        .mg-top-center { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 5px; text-shadow: 2px 2px 0 #000; }
+        #mg-score { font-size: 40px; color: #f1c40f; font-weight: bold; }
+        #mg-info { font-size: 24px; color: #fff; background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 15px; }
+        .mg-top-right { position: absolute; top: 20px; right: 20px; pointer-events: auto; }
+
+        .hud-right { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; pointer-events: auto; }
+        
+        #quest-box { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.95); padding: 10px 20px; border-radius: 15px; border-left: 5px solid #FFD700; color: #333; box-shadow: 0 5px 15px rgba(0,0,0,0.2); font-size: 18px; max-width: 300px; pointer-events: none; display: none; text-shadow: none; text-align: center; }
+        
+        .context-hint { position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); color: #fff; padding: 10px 20px; border-radius: 20px; display: none; font-size: 20px; animation: pulse 1s infinite; pointer-events: none; white-space: nowrap; }
         @keyframes pulse { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.1); } 100% { transform: translateX(-50%) scale(1); } }
 
-        #sleep-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: black; opacity: 0; pointer-events: none; transition: opacity 1s;
-            display: flex; justify-content: center; align-items: center;
-            color: white; font-size: 40px; z-index: 200;
-        }
+        #sleep-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; opacity: 0; pointer-events: none; transition: opacity 1s; display: flex; justify-content: center; align-items: center; color: white; font-size: 40px; z-index: 200; }
 
-        /* Buttons */
-        button {
-            pointer-events: auto; border: none; border-radius: 50px;
-            font-family: 'Fredoka', sans-serif; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s;
-        }
+        button { pointer-events: auto; border: none; border-radius: 50px; font-family: 'Fredoka', sans-serif; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s; }
         button:active { transform: translateY(4px); box-shadow: none; }
-
-        .icon-btn {
-            width: 45px; height: 45px; font-size: 24px;
-            display: flex; justify-content: center; align-items: center; color: white;
-        }
-        .btn-blue { background: #3498db; }
-        .btn-purple { background: #9b59b6; }
-        .btn-orange { background: #e67e22; }
-        .btn-green { background: #2ecc71; }
-        .btn-teal { background: #1abc9c; }
+        .icon-btn { width: 45px; height: 45px; font-size: 24px; display: flex; justify-content: center; align-items: center; color: white; }
+        .btn-blue { background: #3498db; } .btn-purple { background: #9b59b6; } .btn-orange { background: #e67e22; } .btn-green { background: #2ecc71; } .btn-teal { background: #1abc9c; } .btn-red { background: #e74c3c; }
+        .big-btn { padding: 15px 40px; font-size: 20px; margin: 10px; color: white; width: 100%; max-width: 300px; }
         
         #drop-btn { background: #e74c3c; color: white; padding: 8px 15px; display: none; font-size: 16px; }
 
-        /* Training Context Buttons */
-        #training-actions {
-            position: absolute; bottom: 120px; right: 20px;
-            display: none; flex-direction: column; gap: 10px; pointer-events: auto;
-        }
-        .train-btn {
-            background: #f1c40f; color: #333; padding: 10px 20px; font-size: 16px; text-align: right;
-            border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
+        #training-actions { position: absolute; bottom: 120px; right: 20px; display: none; flex-direction: column; gap: 10px; pointer-events: auto; }
+        .train-btn { background: #f1c40f; color: #333; padding: 10px 20px; font-size: 16px; text-align: right; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
 
-        /* Mobile Action Buttons */
-        #mobile-actions {
-            position: absolute; bottom: 30px; right: 30px;
-            display: flex; gap: 20px; pointer-events: auto;
-        }
-        .action-circle {
-            width: 70px; height: 70px; border-radius: 50%;
-            background: rgba(255,255,255,0.3); border: 2px solid white;
-            color: white; font-size: 30px; display: flex; justify-content: center; align-items: center;
-        }
+        #mobile-actions { position: absolute; bottom: 30px; right: 30px; display: flex; gap: 20px; pointer-events: auto; }
+        .action-circle { width: 70px; height: 70px; border-radius: 50%; background: rgba(255,255,255,0.3); border: 2px solid white; color: white; font-size: 30px; display: flex; justify-content: center; align-items: center; }
         .action-circle:active { background: rgba(255,255,255,0.6); }
 
-        /* Screens & Modals */
-        #level-screen, #shop-modal, #customize-modal {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
-            display: none; justify-content: center; align-items: center;
-            color: white; z-index: 100; text-align: center; flex-direction: column;
-        }
-        #level-screen { display: flex; }
-
-        .modal-content {
-            background: #fff; color: #333; padding: 20px; border-radius: 20px;
-            max-width: 90%; width: 400px; max-height: 80%; overflow-y: auto;
-            text-shadow: none; position: relative;
-        }
-        .modal-close {
-            position: absolute; top: 10px; right: 15px; background: #e74c3c;
-            color: white; width: 30px; height: 30px; line-height: 30px; border-radius: 50%; cursor: pointer;
-        }
+        /* Overlays */
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); display: none; justify-content: center; align-items: center; color: white; z-index: 100; text-align: center; flex-direction: column; }
+        
+        .modal-content { background: #fff; color: #333; padding: 20px; border-radius: 20px; max-width: 90%; width: 400px; max-height: 80%; overflow-y: auto; text-shadow: none; position: relative; }
+        .modal-close { position: absolute; top: 10px; right: 15px; background: #e74c3c; color: white; width: 30px; height: 30px; line-height: 30px; border-radius: 50%; cursor: pointer; }
         
         .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        .shop-item {
-            border: 2px solid #eee; border-radius: 10px; padding: 10px; cursor: pointer;
-            display: flex; flex-direction: column; align-items: center;
-        }
+        .shop-item { border: 2px solid #eee; border-radius: 10px; padding: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; }
         .shop-item:hover { background: #f9f9f9; border-color: #3498db; }
-        .shop-item.owned { opacity: 0.5; cursor: default; background: #e0e0e0; }
-
         .color-picker { display: flex; gap: 10px; justify-content: center; margin: 5px 0 15px; flex-wrap: wrap; }
-        .color-swatch { 
-            width: 30px; height: 30px; border-radius: 50%; border: 3px solid #eee; 
-            cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
-            transition: transform 0.1s;
-        }
-        .color-swatch.selected { 
-            border: 3px solid #000; 
-            transform: scale(1.15); 
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
-        }
+        .color-swatch { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #eee; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.1s; }
+        .color-swatch.selected { border: 3px solid #000; transform: scale(1.15); box-shadow: 0 0 10px rgba(0,0,0,0.3); }
         
         h3 { margin: 10px 0 5px; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-
-        #joystick-touch-zone {
-            position: absolute; bottom: 30px; left: 30px;
-            width: 160px; height: 160px; z-index: 20; border-radius: 50%;
-        }
+        #joystick-touch-zone { position: absolute; bottom: 30px; left: 30px; width: 160px; height: 160px; z-index: 20; border-radius: 50%; }
     </style>
 </head>
 <body>
@@ -197,7 +79,7 @@
     <div id="ui-layer">
         <div class="hud-left">
             <div class="hud-item"><span>📅</span> <span id="clock-display">06:00</span></div>
-            <div id="input-debug">Keys: -</div>
+            <div id="input-debug" style="display:none;">Keys: -</div>
             <div class="hud-row">
                 <div class="hud-item"><span>🎒</span> <span id="inventory-display">Leer</span></div>
                 <button id="drop-btn" onclick="dropItem()">❌</button>
@@ -205,15 +87,25 @@
             <div class="hud-item"><span>⭐</span> <span id="star-display">0</span></div>
             <div id="stamina-container"><div id="stamina-bar"></div></div>
         </div>
+        
+        <div id="minigame-hud">
+            <div class="mg-top-center">
+                <div id="mg-score">0</div>
+                <div id="mg-info">Bereit?</div>
+            </div>
+            <div class="mg-top-right">
+                <button class="icon-btn btn-red" onclick="returnToFarm()">❌</button>
+            </div>
+        </div>
 
         <div id="quest-box">
-            <strong>Pferdewunsch:</strong><br>
-            <span id="quest-text">...</span>
+            <strong>Pferdewunsch:</strong><br><span id="quest-text">...</span>
         </div>
         
         <!-- Context Hints -->
         <div id="groom-hint" class="context-hint">👋 Wischen zum Putzen!</div>
         <div id="garden-hint" class="context-hint">🌱 Aktion möglich</div>
+        <div id="tourney-hint" class="context-hint">🏆 Zum Turnier (Leertaste oder Klick)</div>
 
         <div class="hud-right">
             <button id="sound-btn" class="icon-btn btn-purple" onclick="toggleSound()">🔊</button>
@@ -230,35 +122,55 @@
         </div>
 
         <div id="mobile-actions" style="display:none;">
-            <button class="action-circle" onclick="playerJump()">🦘</button>
-            <button id="mobile-interact" class="action-circle" onclick="interact()" style="background:#f1c40f; display:none;">🖐️</button>
+            <button class="action-circle" onclick="handleMobileJump()">🦘</button>
+            <button id="mobile-interact" class="action-circle" onclick="interact()" style="background:#f1c40f;">🖐️</button>
         </div>
     </div>
     
     <div id="sleep-overlay">Gute Nacht! 🌙</div>
 
     <!-- Start / Level Screen -->
-    <div id="level-screen">
+    <div id="level-screen" class="overlay" style="display:flex;">
         <h1 style="color:#FFD700; font-size:40px; margin-bottom:10px;">Pferdehof Deluxe</h1>
-        <p>Jahreszeiten, Garten & Fohlen-Training!</p>
+        <p>Garten, Tiere & Turniere!</p>
         <div id="controls-hint" style="margin:20px 0; color:#ddd;"></div>
         <button onclick="startGame()" style="background:#27ae60; color:white; padding:15px 50px; font-size:24px;">Losreiten</button>
     </div>
 
+    <!-- Tournament Menu -->
+    <div id="tournament-screen" class="overlay">
+        <div class="modal-content" style="width:500px;">
+            <div class="modal-close" onclick="closeModals()">×</div>
+            <h2>🏆 Reit-Turnier</h2>
+            <p>Wähle eine Disziplin!</p>
+            <button class="big-btn btn-blue" onclick="startMinigame('race')">🏇 Wettrennen<br><small>Sei schneller als die anderen!</small></button>
+            <button class="big-btn btn-orange" onclick="startMinigame('jump')">🚧 Springreiten<br><small>Springe im richtigen Moment!</small></button>
+            <button class="big-btn btn-purple" onclick="startMinigame('dressage')">💃 Dressur<br><small>Drücke die Tasten im Takt!</small></button>
+        </div>
+    </div>
+    
+    <!-- Result Screen -->
+    <div id="result-screen" class="overlay">
+        <div class="modal-content">
+            <h2>Ergebnis</h2>
+            <div id="result-text" style="font-size:24px; margin:20px 0;"></div>
+            <div style="color:#f1c40f; font-size:30px; margin-bottom:20px;">+ <span id="result-stars">0</span> ⭐</div>
+            <button class="big-btn btn-green" onclick="returnToFarm()">Zurück zum Hof</button>
+        </div>
+    </div>
+
     <!-- Shop Modal -->
-    <div id="shop-modal">
+    <div id="shop-modal" class="overlay">
         <div class="modal-content">
             <div class="modal-close" onclick="closeModals()">×</div>
             <h2>Hof-Laden</h2>
             <p>Sterne: <span id="shop-stars">0</span></p>
-            <div class="shop-grid" id="shop-grid">
-                <!-- Items per JS -->
-            </div>
+            <div class="shop-grid" id="shop-grid"></div>
         </div>
     </div>
 
     <!-- Customize Modal -->
-    <div id="customize-modal">
+    <div id="customize-modal" class="overlay">
         <div class="modal-content">
             <div class="modal-close" onclick="closeModals()">×</div>
             <h2>Ausstattung & Pflege</h2>
@@ -276,18 +188,12 @@
 <script>
     // --- Globale Variablen ---
     var joy = { active: false, touchId: null, baseX: 110, baseY: 0, stickX: 0, stickY: 0, dx: 0, dy: 0, radius: 50 };
-    var keys = { w:false, a:false, s:false, d:false, Shift:false, Space:false };
+    var keys = { w:false, a:false, s:false, d:false, Shift:false, Space:false, ArrowUp:false, ArrowDown:false, ArrowLeft:false, ArrowRight:false };
 
-    // --- Audio Init (Safe) ---
-    let soundCtx;
-    let soundEnabled = true;
-    try {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        soundCtx = new AudioContext();
-    } catch(e) {
-        soundEnabled = false;
-        soundCtx = { state: 'suspended', resume: ()=>{}, createOscillator: ()=>{return{connect:()=>{},start:()=>{},stop:()=>{},type:'',frequency:{setValueAtTime:()=>{}}}}, createGain: ()=>{return{gain:{setValueAtTime:()=>{},exponentialRampToValueAtTime:()=>{}},connect:()=>{}}}, destination: {}, currentTime: 0, sampleRate: 44100, createBuffer: ()=>{return{getChannelData:()=>{return[]}}}, createBufferSource: ()=>{return{connect:()=>{},start:()=>{}}}, createBiquadFilter: ()=>{return{connect:()=>{},frequency:{value:0}}} };
-    }
+    // --- Audio Init ---
+    let soundCtx; let soundEnabled = true;
+    try { const AC = window.AudioContext || window.webkitAudioContext; soundCtx = new AC(); } 
+    catch(e) { soundEnabled = false; soundCtx = { state: 'suspended', resume:()=>{}, createOscillator:()=>({connect:()=>{},start:()=>{},stop:()=>{},type:'',frequency:{setValueAtTime:()=>{}}}), createGain:()=>({gain:{setValueAtTime:()=>{},exponentialRampToValueAtTime:()=>{}},connect:()=>{}}), destination:{}, currentTime:0, createBuffer:()=>{return{getChannelData:()=>{return[]}}}, createBufferSource:()=>{return{connect:()=>{},start:()=>{}}}, createBiquadFilter:()=>{return{connect:()=>{},frequency:{value:0}}} }; }
 
     function toggleSound() {
         soundEnabled = !soundEnabled;
@@ -301,6 +207,7 @@
         playJump: () => Sound.playTone(300, 'sine', 0.3, 0.2),
         playPop: () => Sound.playTone(400, 'triangle', 0.1, 0.1),
         playSuccess: () => { Sound.playTone(523, 'sine', 0.2); setTimeout(()=>Sound.playTone(659, 'sine', 0.4), 100); },
+        playFail: () => { Sound.playTone(150, 'sawtooth', 0.3, 0.2); },
         playCluck: () => { if(!soundEnabled) return; Sound.playTone(450, 'triangle', 0.08, 0.05); setTimeout(()=>Sound.playTone(350, 'triangle', 0.08, 0.05), 80); },
         playSleep: () => { Sound.playTone(300, 'sine', 0.5, 0.1); setTimeout(()=>Sound.playTone(200, 'sine', 0.5, 0.1), 300); },
         playRustle: () => { if(!soundEnabled) return; Sound.playNoise(0.2); },
@@ -315,30 +222,14 @@
 
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     const WORLD_W = 2500, WORLD_H = 2000;
+    const MODES = { WORLD: 0, RACE: 1, JUMP: 2, DRESSAGE: 3 };
 
-    const itemTypes = {
-        apple: { name: "Apfel", emoji: "🍎", color: "#ff4d4d", plantable: true },
-        carrot: { name: "Möhre", emoji: "🥕", color: "#ffa500", plantable: true },
-        water: { name: "Wasser", emoji: "💧", color: "#3498db" },
-        brush: { name: "Bürste", emoji: "🧹", color: "#95a5a6" },
-        hay: { name: "Heu", emoji: "🌾", color: "#f1c40f" }
-    };
-    
-    const seasons = [
-        { name: "Frühling", bg: "#7BC043", treeColor: "#2ecc71", riverColor: "#4fc3f7" },
-        { name: "Sommer", bg: "#6ab04c", treeColor: "#27ae60", riverColor: "#29b6f6" },
-        { name: "Herbst", bg: "#e1b12c", treeColor: "#e67e22", riverColor: "#81d4fa" },
-        { name: "Winter", bg: "#dfe6e9", treeColor: "#b2bec3", riverColor: "#b3e5fc" }
-    ];
-
-    const shopItems = [
-        { id: 'flower_red', name: 'Rote Blumen', cost: 2, type: 'deco', emoji: '🌹' },
-        { id: 'flower_blue', name: 'Blaue Blumen', cost: 2, type: 'deco', emoji: '💠' },
-        { id: 'fountain', name: 'Brunnen', cost: 5, type: 'deco', emoji: '⛲' },
-        { id: 'bench', name: 'Bank', cost: 3, type: 'deco', emoji: '🪑' }
-    ];
+    const itemTypes = { apple: { name: "Apfel", emoji: "🍎", color: "#ff4d4d", plantable: true }, carrot: { name: "Möhre", emoji: "🥕", color: "#ffa500", plantable: true }, water: { name: "Wasser", emoji: "💧", color: "#3498db" }, brush: { name: "Bürste", emoji: "🧹", color: "#95a5a6" }, hay: { name: "Heu", emoji: "🌾", color: "#f1c40f" } };
+    const seasons = [{name:"Frühling",bg:"#7BC043",treeColor:"#2ecc71",riverColor:"#4fc3f7"},{name:"Sommer",bg:"#6ab04c",treeColor:"#27ae60",riverColor:"#29b6f6"},{name:"Herbst",bg:"#e1b12c",treeColor:"#e67e22",riverColor:"#81d4fa"},{name:"Winter",bg:"#dfe6e9",treeColor:"#b2bec3",riverColor:"#b3e5fc"}];
+    const shopItems = [{ id: 'flower_red', name: 'Rote Blumen', cost: 2, type: 'deco', emoji: '🌹' }, { id: 'flower_blue', name: 'Blaue Blumen', cost: 2, type: 'deco', emoji: '💠' }, { id: 'fountain', name: 'Brunnen', cost: 5, type: 'deco', emoji: '⛲' }, { id: 'bench', name: 'Bank', cost: 3, type: 'deco', emoji: '🪑' }];
 
     var gameState = {
+        mode: MODES.WORLD,
         running: false, level: 0, stars: 0,
         time: 0.25, dayDuration: 12000, 
         weather: 'sunny', weatherTimer: 0, seasonIndex: 0,
@@ -346,10 +237,8 @@
         terrain: { riverPoints: [], fields: [], trees: [], obstacles: [], fences: [], house: null, beds: [] },
         inventory: null, particles: [], footprints: [],
         camX: 0, camY: 0, zoom: 1.0,
-        // Start auf sicherem Hof-Grund (600, 600), weg vom Fluss und Waldrändern
         player: { 
-            x: 600, y: 600, z: 0, vz: 0, vx: 0, vy: 0, 
-            speed: 6, maxStamina: 100, stamina: 100, 
+            x: 600, y: 600, z: 0, vz: 0, vx: 0, vy: 0, speed: 6, maxStamina: 100, stamina: 100, 
             color: '#654321', maneColor: '#2c2c2c', flip: false, animFrame: 0,
             outfit: { saddlePad: '#ffffff', ribbon: null }
         },
@@ -357,7 +246,9 @@
         grooming: { active: false, progress: 0, targetHorse: null },
         training: { active: false, targetFoal: null, menuOpen: false },
         sleeping: false,
-        purchased: []
+        
+        // Minigame Data
+        minigame: { active: false, score: 0, timer: 0, objects: [], opponents: [], state: 'warmup', countdown: 3, dressageOffset: {x:0, y:0} }
     };
 
     function initUI() {
@@ -375,121 +266,87 @@
         }
 
         if(joystickElement) {
-            joystickElement.addEventListener('touchstart', (e) => { 
-                e.preventDefault(); 
-                if (!joy.active) { 
-                    const touch = e.changedTouches[0]; 
-                    joy.touchId = touch.identifier; 
-                    joy.active = true; 
-                    updateJoystick(touch); 
-                } 
-            }, {passive: false});
-            
-            joystickElement.addEventListener('touchmove', (e) => { 
-                e.preventDefault(); 
-                if (joy.active) { 
-                    for (let i = 0; i < e.changedTouches.length; i++) { 
-                        if (e.changedTouches[i].identifier === joy.touchId) { 
-                            updateJoystick(e.changedTouches[i]); 
-                            break; 
-                        } 
-                    } 
-                } 
-            }, {passive: false});
-            
-            const endHandler = (e) => { 
-                if (joy.active) { 
-                    for (let i = 0; i < e.changedTouches.length; i++) { 
-                        if (e.changedTouches[i].identifier === joy.touchId) { 
-                            resetJoystick(); 
-                            break; 
-                        } 
-                    } 
-                } 
+            const updateJoy = (t) => {
+                let dx = t.clientX - joy.baseX, dy = t.clientY - joy.baseY; let dist = Math.hypot(dx,dy);
+                if(dist>joy.radius) { let r=joy.radius/dist; dx*=r; dy*=r; }
+                joy.stickX = joy.baseX+dx; joy.stickY = joy.baseY+dy; joy.dx = dx/joy.radius; joy.dy = dy/joy.radius;
             };
-            joystickElement.addEventListener('touchend', endHandler); 
-            joystickElement.addEventListener('touchcancel', endHandler);
-            joystickElement.addEventListener('touchleave', endHandler);
+            joystickElement.addEventListener('touchstart', (e) => { e.preventDefault(); joy.active=true; joy.touchId=e.changedTouches[0].identifier; updateJoy(e.changedTouches[0]); }, {passive: false});
+            joystickElement.addEventListener('touchmove', (e) => { e.preventDefault(); if (joy.active) for (let t of e.changedTouches) if (t.identifier === joy.touchId) updateJoy(t); }, {passive: false});
+            const end = (e) => { for (let t of e.changedTouches) if (t.identifier === joy.touchId) { joy.active=false; joy.stickX=joy.baseX; joy.stickY=joy.baseY; joy.dx=0; joy.dy=0; } };
+            joystickElement.addEventListener('touchend', end); joystickElement.addEventListener('touchcancel', end); joystickElement.addEventListener('touchleave', end);
         }
-
         initShop();
+        
+        // --- CLICK HANDLER FOR TENT ---
+        canvas.addEventListener('click', (e) => {
+            if (!gameState.running || gameState.mode !== MODES.WORLD) return;
+            const rect = canvas.getBoundingClientRect();
+            // Get screen click
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            
+            // Convert to World Coordinates
+            const worldX = ((clickX - canvas.width/2) / gameState.zoom) + canvas.width/2 + gameState.camX;
+            const worldY = ((clickY - canvas.height/2) / gameState.zoom) + canvas.height/2 + gameState.camY;
+            
+            const tent = gameState.entities.decorations.find(d => d.type === 'tournament');
+            if(tent) {
+                // Check distance (Tent is around 550, 450)
+                if(Math.hypot(worldX - tent.x, worldY - tent.y) < 120) {
+                    openTournamentMenu();
+                }
+            }
+        });
     }
 
-    function resize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        joy.baseX = 30 + 160/2; joy.baseY = canvas.height - (30 + 160/2);
-        if(!joy.active) { joy.stickX = joy.baseX; joy.stickY = joy.baseY; }
-    }
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; joy.baseX = 30 + 160/2; joy.baseY = canvas.height - (30 + 160/2); if(!joy.active) { joy.stickX = joy.baseX; joy.stickY = joy.baseY; } }
 
     function startGame() {
         document.getElementById('level-screen').style.display = 'none';
         if(soundCtx && soundCtx.state === 'suspended') soundCtx.resume();
         generateWorld();
         gameState.running = true;
-        window.focus();
-        canvas.focus();
+        window.focus(); canvas.focus();
         loop();
     }
     
-    document.addEventListener('mousedown', (e) => {
-        if(gameState.running && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
-            canvas.focus();
-            window.focus();
-        }
-    });
+    document.addEventListener('mousedown', (e) => { if(gameState.running && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') { canvas.focus(); window.focus(); } });
 
     function generateWorld() {
+        gameState.mode = MODES.WORLD;
         gameState.time = 0.25; 
-        gameState.stars = 0;
-        // Reset Player Position bei jedem Neustart sicher
-        gameState.player.x = 600; 
-        gameState.player.y = 600;
+        // Reset Player on Safe Spot
+        gameState.player.x = 600; gameState.player.y = 600;
         
-        gameState.entities.horses = [];
-        gameState.entities.items = [];
-        gameState.entities.leafPiles = [];
+        gameState.entities.horses = []; gameState.entities.items = []; gameState.entities.leafPiles = [];
         gameState.entities.dogs = [{x: 1300, y: 1050, vx:0, vy:0, flip: false, anim:0, state:'follow', timer: 500, tx:0, ty:0}];
-        gameState.entities.ducks = [];
-        gameState.entities.chickens = [];
-        
-        gameState.terrain.riverPoints = [];
+        gameState.entities.ducks = []; gameState.entities.chickens = [];
+        gameState.terrain.riverPoints = []; gameState.terrain.trees = []; gameState.terrain.obstacles = []; gameState.terrain.fences = []; gameState.terrain.beds = [];
+
+        // River
         for(let x=0; x<=WORLD_W; x+=40) gameState.terrain.riverPoints.push({x:x, y: (WORLD_H/2) + Math.sin(x/400)*300});
         
-        gameState.terrain.trees = [];
-        gameState.terrain.obstacles = [];
-        gameState.terrain.fences = [];
-        gameState.terrain.beds = [];
-        
+        // Fences
         for(let x=0; x<=WORLD_W; x+=80) { gameState.terrain.fences.push({x:x, y:5}); gameState.terrain.fences.push({x:x, y:WORLD_H-5}); }
         for(let y=0; y<=WORLD_H; y+=60) { gameState.terrain.fences.push({x:5, y:y}); gameState.terrain.fences.push({x:WORLD_W-5, y:y}); }
 
+        // House & Beds & Tournament Tent
         gameState.terrain.house = {x: 300, y: 300, w: 160, h: 120};
+        gameState.entities.decorations.push({x: 550, y: 450, emoji: '🎪', type: 'tournament'}); // TENT ADDED
         for(let i=0; i<3; i++) gameState.terrain.beds.push({x: 500 + i*70, y: 350, w: 60, h: 60, plant: null, growth: 0, watered: false});
 
-        // Bäume & Hindernisse (Mit sicherer Schutzzone um den neuen Startpunkt 600,600)
+        // Trees (Safe Zone around 600,600)
         for(let i=0; i<150; i++) {
             let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
-            
-            // Schutzzone um den Hof
-            if(Math.hypot(x - 600, y - 600) < 300) continue;
-
-            if (i >= 80) { if (Math.random() > 0.5) { x = Math.random() < 0.5 ? Math.random() * 100 : WORLD_W - Math.random() * 100; y = Math.random() * WORLD_H; } else { x = Math.random() * WORLD_W; y = Math.random() < 0.5 ? Math.random() * 100 : WORLD_H - Math.random() * 100; } }
+            if(Math.hypot(x - 600, y - 600) < 300) continue; // Safe zone
             if(!isNearRiver(x,y,80) && !(x > 250 && x < 800 && y > 250 && y < 500)) {
-                let apples = [];
-                if(Math.random() < 0.3) apples = [{ox:-15,oy:-15}, {ox:15,oy:-5}, {ox:0,oy:-25}, {ox:-10,oy:5}];
+                let apples = []; if(Math.random() < 0.3) apples = [{ox:-15,oy:-15}, {ox:15,oy:-5}, {ox:0,oy:-25}, {ox:-10,oy:5}];
                 gameState.terrain.trees.push({x:x, y:y, size: 60+Math.random()*40, apples: apples});
             }
         }
-        for(let i=0; i<15; i++) {
-            let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
-            
-            // Schutzzone
-            if(Math.hypot(x - 600, y - 600) < 300) continue;
-
-            if(!isNearRiver(x,y,100) && !(x > 250 && x < 800 && y > 250 && y < 500)) gameState.terrain.obstacles.push({x:x, y:y, w:80, h:20});
-        }
-
+        
+        // Animals
         for(let i=0; i<5; i++) { let pt = gameState.terrain.riverPoints[Math.floor(Math.random()*gameState.terrain.riverPoints.length)]; gameState.entities.ducks.push({x: pt.x, y: pt.y, offset: Math.random()*100}); }
         for(let i=0; i<10; i++) { let cx = 1000 + (Math.random()-0.5)*500; let cy = 1000 + (Math.random()-0.5)*500; gameState.entities.chickens.push({x: cx, y: cy, vx: 0, vy: 0, state: 'idle', timer: 0, panic: 0}); }
 
@@ -518,14 +375,32 @@
         gameState.seasonIndex = idx;
         const s = seasons[idx];
         gameState.entities.leafPiles = [];
-        if(s.name === 'Herbst') {
-            for(let i=0; i<100; i++) gameState.entities.leafPiles.push({x: Math.random()*WORLD_W, y: Math.random()*WORLD_H});
-        }
+        if(s.name === 'Herbst') { for(let i=0; i<100; i++) gameState.entities.leafPiles.push({x: Math.random()*WORLD_W, y: Math.random()*WORLD_H}); }
     }
 
     function loop() {
         if(!gameState.running) return;
-        
+
+        if(gameState.mode === MODES.WORLD) {
+            updateWorld();
+            let tx = gameState.player.x - canvas.width/2; let ty = gameState.player.y - canvas.height/2;
+            gameState.camX += (tx - gameState.camX) * 0.1; gameState.camY += (ty - gameState.camY) * 0.1;
+        } else {
+            // Minigame Updates
+            if(gameState.mode === MODES.RACE) updateRace();
+            else if(gameState.mode === MODES.JUMP) updateJump();
+            else if(gameState.mode === MODES.DRESSAGE) updateDressage();
+            // Cam for minigames
+            let tx = gameState.player.x - canvas.width/2; let ty = gameState.player.y - canvas.height/2;
+            if(gameState.mode === MODES.DRESSAGE) { tx = 0; ty = 0; }
+            gameState.camX += (tx - gameState.camX) * 0.1; gameState.camY += (ty - gameState.camY) * 0.1;
+        }
+
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    function updateWorld() {
         if(!gameState.sleeping) {
             gameState.time += 1/gameState.dayDuration;
             if(gameState.time >= 1) gameState.time = 0;
@@ -533,21 +408,26 @@
             gameState.weatherTimer++;
             if(gameState.weatherTimer > 3000) {
                 gameState.weatherTimer = 0;
-                let nextS = (gameState.seasonIndex + 1) % 4;
-                updateSeason(nextS);
+                let nextS = (gameState.seasonIndex + 1) % 4; updateSeason(nextS);
                 const r = Math.random();
                 if(r < 0.6) gameState.weather = 'sunny'; else if(r < 0.9) gameState.weather = 'rain'; else gameState.weather = 'snow';
             }
 
             handlePlayerMovement();
-            updateHorses();
-            updateDog();
-            updateDucks();
-            updateChickens();
-            updateGarden();
-            checkCollisions();
-            checkHouseSleep();
+            updateHorses(); updateDog(); updateDucks(); updateChickens(); updateGarden();
+            checkCollisions(); checkHouseSleep();
             
+            // Fade Footprints logic
+            for (let i = gameState.footprints.length - 1; i >= 0; i--) {
+                gameState.footprints[i].age -= 0.5; // Fade speed
+                if (gameState.footprints[i].age <= 0) gameState.footprints.splice(i, 1);
+            }
+            
+            // Tournament Tent Check
+            let nearTent = Math.hypot(gameState.player.x - 550, gameState.player.y - 450) < 80;
+            const hint = document.getElementById('tourney-hint');
+            if(nearTent) { hint.style.display='block'; if(keys.Space) openTournamentMenu(); } else { hint.style.display='none'; }
+
             if(seasons[gameState.seasonIndex].name === 'Herbst') {
                 const p = gameState.player;
                 for(let i=gameState.entities.leafPiles.length-1; i>=0; i--) {
@@ -560,59 +440,17 @@
                 }
             }
         }
-
-        let tx = gameState.player.x - canvas.width/2;
-        let ty = gameState.player.y - canvas.height/2;
-        gameState.camX += (tx - gameState.camX) * 0.1;
-        gameState.camY += (ty - gameState.camY) * 0.1;
-
-        draw();
-        requestAnimationFrame(loop);
-    }
-
-    function updateJoystick(touch) {
-        let dx = touch.clientX - joy.baseX; 
-        let dy = touch.clientY - joy.baseY; 
-        let dist = Math.hypot(dx, dy);
-        
-        if(dist > joy.radius) { 
-            let ratio = joy.radius / dist; 
-            dx *= ratio; 
-            dy *= ratio; 
-        }
-        
-        joy.stickX = joy.baseX + dx; 
-        joy.stickY = joy.baseY + dy; 
-        joy.dx = dx / joy.radius; 
-        joy.dy = dy / joy.radius;
-    }
-    
-    function resetJoystick() { 
-        joy.active = false; 
-        joy.touchId = null; 
-        joy.stickX = joy.baseX; 
-        joy.stickY = joy.baseY; 
-        joy.dx = 0; 
-        joy.dy = 0; 
     }
 
     function handlePlayerMovement() {
         const p = gameState.player;
         let dx = 0, dy = 0;
         
-        if(joy.active) { 
-            dx = joy.dx; dy = joy.dy; 
-        } else { 
-            if(keys.w) dy = -1; 
-            if(keys.s) dy = 1; 
-            if(keys.a) dx = -1; 
-            if(keys.d) dx = 1; 
-            
-            if (dx !== 0 || dy !== 0) {
-                let length = Math.hypot(dx, dy);
-                dx /= length;
-                dy /= length;
-            }
+        if(joy.active) { dx = joy.dx; dy = joy.dy; } 
+        else {
+            if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1; 
+            if(keys.a || keys.ArrowLeft) dx = -1; if(keys.d || keys.ArrowRight) dx = 1; 
+            if (dx !== 0 || dy !== 0) { let length = Math.hypot(dx, dy); dx /= length; dy /= length; }
         }
 
         let speed = p.speed;
@@ -620,38 +458,24 @@
         let onRiver = isNearRiver(p.x, p.y, 60);
 
         if(onRiver) {
-            if(isWinter) {
-                p.vx = p.vx * 0.99 + dx * 0.05; 
-                p.vy = p.vy * 0.99 + dy * 0.05;
-                if(Math.hypot(p.vx, p.vy) > 0.5 && Math.random() < 0.05) Sound.playSlide();
-            } else {
-                speed *= 0.3;
-                if(Math.random() < 0.05 && (dx!=0 || dy!=0)) { Sound.playSplash(); createParticles(p.x, p.y, "💧", 1); }
-            }
+            if(isWinter) { p.vx = p.vx * 0.99 + dx * 0.05; p.vy = p.vy * 0.99 + dy * 0.05; if(Math.hypot(p.vx, p.vy) > 0.5 && Math.random() < 0.05) Sound.playSlide(); } 
+            else { speed *= 0.3; if(Math.random() < 0.05 && (dx!=0 || dy!=0)) { Sound.playSplash(); createParticles(p.x, p.y, "💧", 1); } }
         } else {
-            p.vx = dx * speed;
-            p.vy = dy * speed;
+            p.vx = dx * speed; p.vy = dy * speed;
         }
 
         let isSprinting = (keys.Shift || (joy.active && Math.hypot(joy.dx,joy.dy) > 0.9));
         if(isSprinting && p.stamina > 0 && (dx!=0 || dy!=0)) { 
-            if(onRiver && isWinter) { p.vx*=1.02; p.vy*=1.02; } 
-            else { p.vx *= 1.6; p.vy *= 1.6; }
-            p.stamina -= 0.5; 
+            if(onRiver && isWinter) { p.vx*=1.02; p.vy*=1.02; } else { p.vx *= 1.6; p.vy *= 1.6; } p.stamina -= 0.5; 
         } else { if(p.stamina < p.maxStamina) p.stamina += 0.2; }
 
         if(p.z > 0 || p.vz !== 0) { p.z += p.vz; p.vz -= 0.8; if(p.z <= 0) { p.z = 0; p.vz = 0; Sound.playNoise(0.1); } }
 
-        // Position speichern vor dem Update (für Kollisions-Rücksetzung)
-        let prevX = p.x;
-        let prevY = p.y;
-
-        p.x += p.vx;
-        p.y += p.vy;
+        let prevX = p.x; let prevY = p.y;
+        p.x += p.vx; p.y += p.vy;
         
         if(Math.hypot(p.vx, p.vy) > 0.1) {
-            p.animFrame += Math.hypot(p.vx, p.vy) * 0.05;
-            p.flip = p.vx < 0;
+            p.animFrame += Math.hypot(p.vx, p.vy) * 0.05; p.flip = p.vx < 0;
             if(!onRiver && Math.floor(p.animFrame*10) % 5 === 0 && p.z === 0) gameState.footprints.push({x: p.x, y: p.y, age: 100});
             if(!onRiver && Math.floor(p.animFrame*5) % 10 === 0 && p.z === 0) Sound.playNoise(0.05);
         } else { p.animFrame = 0; }
@@ -661,292 +485,275 @@
         if(p.z < 10) {
             for(let o of gameState.terrain.obstacles) {
                 if(p.x > o.x - 20 && p.x < o.x + o.w + 20 && p.y > o.y - 10 && p.y < o.y + o.h + 10) {
-                    // HARD STOP: Sofortiges Zurücksetzen auf die Position VOR der Kollision
-                    // Das verhindert das "Zappeln", da keine Gegenkraft berechnet wird, sondern einfach "stoppt"
-                    p.x = prevX;
-                    p.y = prevY;
-                    p.vx = 0; p.vy = 0;
+                    p.x = prevX; p.y = prevY; p.vx = 0; p.vy = 0;
                 }
             }
         }
     }
-
-    function playerJump() { if(gameState.player.z === 0) { gameState.player.vz = 12; Sound.playJump(); } }
     
-    function interact() {
-        if(gameState.training.active) return;
-        
-        let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50);
-        if(nearBed) { handleGardenInteract(nearBed); return; }
-
-        let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60);
-        if(nearFoal) { startTraining(nearFoal); return; }
-
-        dropItem();
-    }
-
-    function dropItem() {
-        if(!gameState.inventory) return;
-        if(gameState.grooming.active) return;
-        
-        let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50);
-        if(nearBed) { handleGardenInteract(nearBed); return; }
-
-        Sound.playPop(); const p = gameState.player;
-        let dx = p.flip ? 60 : -60;
-        gameState.entities.items.push({ x: p.x + dx, y: p.y, type: gameState.inventory });
-        gameState.inventory = null; createParticles(p.x, p.y, "💨", 5); updateUI();
-        if(gameState.quest.horse) updateQuestUI();
-    }
-
-    function handleGardenInteract(b) {
-        if(!b.plant && gameState.inventory && (gameState.inventory.name === 'Apfel' || gameState.inventory.name === 'Möhre')) {
-            b.plant = gameState.inventory.name;
-            b.growth = 0; b.watered = false;
-            Sound.playNoise(0.5); createParticles(b.x+b.w/2, b.y+b.h/2, "🌱", 5);
-            gameState.inventory = null; updateUI();
-        } else if(b.plant && !b.watered && gameState.inventory && gameState.inventory.name === 'Wasser') {
-            b.watered = true;
-            Sound.playSplash(); createParticles(b.x+b.w/2, b.y+b.h/2, "💧", 8);
-            gameState.inventory = null; updateUI();
-        } else if(b.plant && b.growth >= 100) {
-            let type = itemTypes[b.plant === 'Apfel' ? 'apple' : 'carrot'];
-            gameState.entities.items.push({ x: b.x+b.w/2, y: b.y+b.h+20, type: type });
-            Sound.playPop();
-            b.plant = null; b.growth = 0; b.watered = false;
-        }
-    }
-
-    function updateGarden() {
-        gameState.terrain.beds.forEach(b => {
-            if(b.plant && b.watered && b.growth < 100) { b.growth += 0.05; }
-        });
-        
-        let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50);
-        const hint = document.getElementById('garden-hint');
-        const mobBtn = document.getElementById('mobile-interact');
-        
-        if(nearBed) {
-            hint.style.display = 'block';
-            if(isTouchDevice) mobBtn.style.display = 'flex';
-            if(!b.plant) hint.innerText = "Pflanzen?";
-            else if(!b.watered) hint.innerText = "Gießen?";
-            else if(b.growth >= 100) hint.innerText = "Ernten!";
-            else hint.innerText = "Wächst...";
-        } else {
-            hint.style.display = 'none';
-        }
-        
-        let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60);
-        const trainBtn = document.getElementById('train-btn');
-        if(nearFoal) { trainBtn.style.display = 'flex'; if(isTouchDevice) mobBtn.style.display = 'flex'; }
-        else { trainBtn.style.display = 'none'; if(!nearBed && isTouchDevice) mobBtn.style.display = 'none'; }
-    }
-
-    function toggleTrainingMenu() {
-        let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60);
-        if(nearFoal) startTraining(nearFoal);
-    }
-
-    function startTraining(foal) {
-        if(gameState.training.active) {
-            gameState.training.active = false;
-            document.getElementById('training-actions').style.display = 'none';
-        } else {
-            gameState.training.active = true;
-            gameState.training.targetFoal = foal;
-            document.getElementById('training-actions').style.display = 'flex';
-        }
-    }
+    // --- Minigame Logic ---
+    function openTournamentMenu() { document.getElementById('tournament-screen').style.display = 'flex'; keys.Space = false; }
     
-    function commandFoal(cmd) {
-        const f = gameState.training.targetFoal;
-        if(!f) return;
+    function startMinigame(typeString) {
+        closeModals();
+        gameState.minigame.active = true;
         
-        if(cmd === 'rear') {
-            f.trick = 'rear'; f.trickTimer = 60;
-            Sound.playJump(); createParticles(f.x, f.y, "✨", 5);
-        }
-        if(cmd === 'lie') {
-            f.trick = 'lie'; f.trickTimer = 100;
-            Sound.playNoise(0.2); createParticles(f.x, f.y, "💤", 5);
-        }
-        gameState.stars += 1; updateUI();
-        gameState.training.active = false;
-        document.getElementById('training-actions').style.display = 'none';
+        // CORRECTION: Map string to INT mode
+        let mode = MODES.WORLD;
+        if(typeString === 'race') mode = MODES.RACE;
+        else if(typeString === 'jump') mode = MODES.JUMP;
+        else if(typeString === 'dressage') mode = MODES.DRESSAGE;
+        
+        gameState.mode = mode; // Set global mode
+        gameState.minigame.score = 0;
+        gameState.minigame.timer = 0; gameState.minigame.state = 'warmup'; gameState.minigame.countdown = 3;
+        
+        document.getElementById('minigame-hud').style.display = 'block'; 
+        document.getElementById('ui-layer').querySelector('.hud-left').style.display='none'; 
+        
+        // --- KEYBOARD FOCUS FIX ---
+        canvas.focus(); // Force focus to canvas to ensure keys work immediately
+
+        if(mode === MODES.RACE) setupRace();
+        else if(mode === MODES.JUMP) setupJump();
+        else if(mode === MODES.DRESSAGE) setupDressage();
     }
 
-    function checkHouseSleep() {
-        if(gameState.sleeping) return;
-        const p = gameState.player; const h = gameState.terrain.house;
-        if(h && p.x > h.x + 60 && p.x < h.x + h.w - 60 && p.y > h.y + h.h - 40 && p.y < h.y + h.h + 20) triggerSleep();
+    function endMinigame(stars, msg) {
+        gameState.minigame.state = 'end';
+        document.getElementById('result-screen').style.display = 'flex';
+        document.getElementById('result-text').innerText = msg;
+        document.getElementById('result-stars').innerText = stars;
+        gameState.stars += stars;
     }
-    
-    function triggerSleep() {
-        gameState.sleeping = true; Sound.playSleep(); document.getElementById('sleep-overlay').style.opacity = 1;
-        setTimeout(() => {
-            gameState.time = 0.25; gameState.player.stamina = 100; gameState.player.x += 20; 
-            updateUI();
-            setTimeout(() => { document.getElementById('sleep-overlay').style.opacity = 0; gameState.sleeping = false; }, 1500);
-        }, 1500);
+
+    function returnToFarm() {
+        closeModals();
+        gameState.mode = MODES.WORLD;
+        gameState.minigame.active = false;
+        document.getElementById('minigame-hud').style.display = 'none';
+        document.getElementById('ui-layer').querySelector('.hud-left').style.display='flex';
+        document.getElementById('result-screen').style.display = 'none'; // Ensure result screen is closed
+        generateWorld(); 
     }
-    
+
+    // --- 1. RACE MODE ---
+    function setupRace() {
+        gameState.player.x = 100; gameState.player.y = 300;
+        gameState.minigame.opponents = [ {x:100, y:200, speed: 7, color: '#333', rank:0}, {x:100, y:400, speed: 7.5, color: '#aaa', rank:0}, {x:100, y:500, speed: 6.8, color: '#630', rank:0} ];
+        gameState.minigame.objects = []; for(let i=0; i<20; i++) gameState.minigame.objects.push({x: 500 + Math.random()*4000, y: 150 + Math.random()*400, w:40, h:40});
+        document.getElementById('mg-info').innerText = "Drücke so schnell du kannst!";
+    }
+
+    function updateRace() {
+        if(gameState.minigame.state === 'warmup') {
+            gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown);
+            if(gameState.minigame.countdown <= 0) { gameState.minigame.state = 'play'; document.getElementById('mg-info').innerText = "LOS!"; } return;
+        }
+        if(gameState.minigame.state !== 'play') return;
+
+        let dx = 0; let dy = 0;
+        if(keys.d || keys.ArrowRight) dx = 1; if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1;
+        
+        gameState.player.x += (gameState.player.speed + (keys.Shift?2:0)); gameState.player.y += dy * 4;
+        gameState.player.animFrame += 0.3;
+
+        for(let o of gameState.minigame.objects) { if(Math.abs(gameState.player.x - o.x) < 30 && Math.abs(gameState.player.y - o.y) < 30) { gameState.player.x -= 20; Sound.playFail(); } }
+        for(let op of gameState.minigame.opponents) { op.x += op.speed + (Math.random()-0.3); op.animFrame = (op.animFrame||0) + 0.3; }
+
+        let dist = 5000;
+        let pPct = Math.floor((gameState.player.x / dist)*100);
+        document.getElementById('mg-score').innerText = pPct + "%";
+
+        if(gameState.player.x >= dist) {
+            let rank = 1; for(let op of gameState.minigame.opponents) if(op.x > gameState.player.x) rank++;
+            let stars = rank === 1 ? 5 : (rank === 2 ? 3 : 1); endMinigame(stars, "Platz " + rank + "!");
+        }
+    }
+
+    // --- 2. JUMP MODE ---
+    function setupJump() {
+        gameState.player.x = 0; gameState.player.y = 400;
+        gameState.minigame.objects = []; for(let i=1; i<=10; i++) gameState.minigame.objects.push({x: i * 400, type: 'fence', cleared: false});
+        document.getElementById('mg-info').innerText = "Drücke LEERTASTE zum Springen!";
+    }
+
+    function updateJump() {
+        if(gameState.minigame.state === 'warmup') {
+             gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown);
+             if(gameState.minigame.countdown <= 0) { 
+                 gameState.minigame.state = 'play'; 
+                 document.getElementById('mg-info').innerText = "Drücke LEERTASTE zum Springen!";
+             }
+             return;
+        }
+        if(gameState.minigame.state !== 'play') return;
+
+        gameState.player.x += 8; gameState.player.animFrame += 0.3;
+        
+        if(gameState.player.z > 0) {
+            gameState.player.z += gameState.player.vz; gameState.player.vz -= 1; 
+            if(gameState.player.z <= 0) { gameState.player.z = 0; gameState.player.vz = 0; }
+        } else if (keys.Space) { 
+            gameState.player.vz = 15; Sound.playJump(); 
+            keys.Space = false; // Reset key trigger
+        }
+
+        for(let f of gameState.minigame.objects) {
+            if(!f.cleared) {
+                if(Math.abs(gameState.player.x - f.x) < 20) {
+                    if(gameState.player.z > 20) { f.cleared = true; gameState.minigame.score += 100; Sound.playSuccess(); } 
+                    else if (Math.abs(gameState.player.x - f.x) < 5) { f.cleared = true; gameState.minigame.score -= 50; Sound.playFail(); gameState.player.speed = 2; }
+                }
+            }
+        }
+        document.getElementById('mg-score').innerText = gameState.minigame.score;
+        if(gameState.player.x > 4200) {
+            let stars = Math.floor(gameState.minigame.score / 200); if(stars < 0) stars = 0; if(stars > 5) stars = 5;
+            endMinigame(stars, gameState.minigame.score + " Punkte");
+        }
+    }
+
+    // --- 3. DRESSAGE MODE ---
+    const DRESSAGE_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+    function setupDressage() {
+        gameState.player.x = canvas.width/2; gameState.player.y = canvas.height/2 + 100;
+        gameState.minigame.objects = []; gameState.minigame.timer = 0;
+        gameState.minigame.dressageOffset = {x:0, y:0};
+        document.getElementById('mg-info').innerText = "Drücke Pfeiltasten im Takt!";
+    }
+
+    function updateDressage() {
+        if(gameState.minigame.state === 'warmup') {
+             gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = "Gleich gehts los!";
+             if(gameState.minigame.countdown <= 0) {
+                 gameState.minigame.state = 'play';
+                 document.getElementById('mg-info').innerText = "Drücke Pfeiltasten im Takt!";
+             }
+             return;
+        }
+        if(gameState.minigame.state !== 'play') return;
+
+        gameState.minigame.timer++;
+        if(gameState.minigame.timer % 40 === 0) { let k = DRESSAGE_KEYS[Math.floor(Math.random()*4)]; gameState.minigame.objects.push({key: k, y: 0, hit: false}); }
+        let targetY = canvas.height - 100; for(let arr of gameState.minigame.objects) { arr.y += 5; }
+
+        let inputKey = null;
+        if(keys.w) { inputKey = 'ArrowUp'; keys.w = false; }
+        else if(keys.ArrowUp) { inputKey = 'ArrowUp'; keys.ArrowUp = false; }
+        else if(keys.s) { inputKey = 'ArrowDown'; keys.s = false; }
+        else if(keys.ArrowDown) { inputKey = 'ArrowDown'; keys.ArrowDown = false; }
+        else if(keys.a) { inputKey = 'ArrowLeft'; keys.a = false; }
+        else if(keys.ArrowLeft) { inputKey = 'ArrowLeft'; keys.ArrowLeft = false; }
+        else if(keys.d) { inputKey = 'ArrowRight'; keys.d = false; }
+        else if(keys.ArrowRight) { inputKey = 'ArrowRight'; keys.ArrowRight = false; }
+
+        // Animation Decay (Slower decay for clearer movement)
+        gameState.minigame.dressageOffset.x *= 0.9;
+        gameState.minigame.dressageOffset.y *= 0.9;
+        if(gameState.player.z > 0) { gameState.player.z -= 2; }
+
+        if(inputKey) {
+            // Visual Movement Feedback (Always triggers on key press)
+            if(inputKey === 'ArrowLeft') gameState.minigame.dressageOffset.x = -80;
+            if(inputKey === 'ArrowRight') gameState.minigame.dressageOffset.x = 80;
+            if(inputKey === 'ArrowUp') gameState.player.z = 60; // Rear up visual
+            if(inputKey === 'ArrowDown') gameState.minigame.dressageOffset.y = 40; // Bow down
+
+            // Logic Check (Increased window size < 100 for better hit detection)
+            let closest = gameState.minigame.objects.find(a => !a.hit && Math.abs(a.y - targetY) < 100); 
+            if(closest && closest.key === inputKey) { 
+                closest.hit = true; gameState.minigame.score += 50; 
+                Sound.playSuccess(); gameState.player.animFrame += 1; 
+                createParticles(canvas.width/2, targetY, "✨", 5);
+            }
+        }
+        gameState.minigame.objects = gameState.minigame.objects.filter(a => a.y < canvas.height);
+        document.getElementById('mg-score').innerText = gameState.minigame.score;
+        if(gameState.minigame.timer > 1000) { let stars = Math.floor(gameState.minigame.score / 300); if(stars > 5) stars = 5; endMinigame(stars, "Tanz beendet!"); }
+    }
+
+    // --- Entity Updates (World) ---
     function updateHorses() {
         for(let h of gameState.entities.horses) {
             if(h.isFoal) {
-                if(h.trickTimer > 0) {
-                    h.trickTimer--;
-                    if(h.trick === 'rear') h.anim = Math.sin(Date.now()/100)*2; 
-                    if(h.trick === 'lie') h.anim = 0; 
-                    continue;
-                }
-                
+                if(h.trickTimer > 0) { h.trickTimer--; if(h.trick === 'rear') h.anim = Math.sin(Date.now()/100)*2; if(h.trick === 'lie') h.anim = 0; continue; }
                 let dist = Math.hypot(h.x - h.parent.x, h.y - h.parent.y);
-                if(dist > 60) {
-                    let angle = Math.atan2(h.parent.y - h.y, h.parent.x - h.x);
-                    h.x += Math.cos(angle) * 3; h.y += Math.sin(angle) * 3; h.anim += 0.2; h.flip = Math.cos(angle) < 0;
-                } else h.anim = 0;
+                if(dist > 60) { let angle = Math.atan2(h.parent.y - h.y, h.parent.x - h.x); h.x += Math.cos(angle) * 3; h.y += Math.sin(angle) * 3; h.anim += 0.2; h.flip = Math.cos(angle) < 0; } else h.anim = 0;
             } else {
-                if(h.state === 'idle') {
-                    h.timer++;
-                    if(h.timer > 200) { h.state = 'walk'; h.tx = h.x + (Math.random()-0.5)*400; h.ty = h.y + (Math.random()-0.5)*400; h.tx = Math.max(50, Math.min(WORLD_W-50, h.tx)); h.ty = Math.max(50, Math.min(WORLD_H-50, h.ty)); }
-                } else if(h.state === 'walk') {
-                    let dx = h.tx - h.x, dy = h.ty - h.y; let dist = Math.hypot(dx, dy);
-                    if(dist < 5) { h.state = 'idle'; h.timer = 0; h.anim = 0; } else { h.x += (dx/dist)*1.5; h.y += (dy/dist)*1.5; h.flip = dx < 0; h.anim += 0.1; }
-                }
+                if(h.state === 'idle') { h.timer++; if(h.timer > 200) { h.state = 'walk'; h.tx = h.x + (Math.random()-0.5)*400; h.ty = h.y + (Math.random()-0.5)*400; h.tx = Math.max(50, Math.min(WORLD_W-50, h.tx)); h.ty = Math.max(50, Math.min(WORLD_H-50, h.ty)); } } 
+                else if(h.state === 'walk') { let dx = h.tx - h.x, dy = h.ty - h.y; let dist = Math.hypot(dx, dy); if(dist < 5) { h.state = 'idle'; h.timer = 0; h.anim = 0; } else { h.x += (dx/dist)*1.5; h.y += (dy/dist)*1.5; h.flip = dx < 0; h.anim += 0.1; } }
             }
         }
     }
-    
-    function updateDog() { 
-        let dog = gameState.entities.dogs[0]; dog.timer--; 
-        if(dog.timer <= 0) { 
-            let r = Math.random(); 
-            if(r < 0.5) { dog.state = 'follow'; dog.timer = 500 + Math.random()*500; } 
-            else if (r < 0.8) { dog.state = 'wander'; dog.timer = 300 + Math.random()*300; dog.tx = Math.max(100, Math.min(WORLD_W-100, dog.x + (Math.random()-0.5)*800)); dog.ty = Math.max(100, Math.min(WORLD_H-100, dog.y + (Math.random()-0.5)*800)); } 
-            else { dog.state = 'idle'; dog.timer = 200 + Math.random()*200; } 
-        } 
-        let speed = 4.5; let moving = false; let tx = dog.x, ty = dog.y; 
-        if(dog.state === 'follow') { 
-            let dist = Math.hypot(dog.x - gameState.player.x, dog.y - gameState.player.y); 
-            if(dist > 150) { tx = gameState.player.x; ty = gameState.player.y; moving = true; } 
-        } else if (dog.state === 'wander') { 
-            let dist = Math.hypot(dog.x - dog.tx, dog.y - dog.ty); 
-            if(dist > 10) { tx = dog.tx; ty = dog.ty; moving = true; speed = 2.5; } else { dog.state = 'idle'; dog.timer = 100; } 
-        } 
-        if(moving) { 
-            let angle = Math.atan2(ty - dog.y, tx - dog.x); 
-            dog.x += Math.cos(angle) * speed; dog.y += Math.sin(angle) * speed; dog.anim += 0.3; dog.flip = Math.cos(angle) > 0; 
-        } else { dog.anim = 0; } 
+    function updateDog() { let d=gameState.entities.dogs[0]; d.timer--; if(d.timer<=0){d.timer=200; d.state=d.state==='idle'?'follow':'idle';} if(d.state==='follow' && Math.hypot(d.x-gameState.player.x, d.y-gameState.player.y)>100) { let a=Math.atan2(gameState.player.y-d.y, gameState.player.x-d.x); d.x+=Math.cos(a)*4; d.y+=Math.sin(a)*4; d.anim+=0.3; d.flip=Math.cos(a)>0; } else d.anim=0; }
+    function updateDucks() { for(let d of gameState.entities.ducks) d.x += Math.sin((Date.now()/1000) + d.offset) * 0.5; }
+    function updateChickens() { const p = gameState.player; gameState.entities.chickens.forEach(c => { let dist = Math.hypot(c.x - p.x, c.y - p.y); if (dist < 120) { if (c.panic <= 0) { c.panic = 60; Sound.playCluck(); createParticles(c.x, c.y, "🪶", 2); } let angle = Math.atan2(c.y - p.y, c.x - p.x); c.vx = Math.cos(angle) * 5; c.vy = Math.sin(angle) * 5; } else if (c.panic > 0) { c.panic--; c.vx *= 0.95; c.vy *= 0.95; } else { c.timer--; if(c.timer <= 0) { c.timer = 100 + Math.random() * 200; let angle = Math.random() * Math.PI * 2; c.vx = Math.cos(angle) * 0.5; c.vy = Math.sin(angle) * 0.5; } } c.x += c.vx; c.y += c.vy; c.x = Math.max(50, Math.min(WORLD_W-50, c.x)); c.y = Math.max(50, Math.min(WORLD_H-50, c.y)); }); }
+
+    // --- Interactions ---
+    function playerJump() { if(gameState.player.z === 0) { gameState.player.vz = 12; Sound.playJump(); } }
+    function interact() {
+        if(gameState.training.active) return;
+        let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50); if(nearBed) { handleGardenInteract(nearBed); return; }
+        let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); if(nearFoal) { startTraining(nearFoal); return; }
+        // Tournament interact handled in Loop
+        dropItem();
     }
-
-    function updateChickens() { 
-        const p = gameState.player; 
-        gameState.entities.chickens.forEach(c => { 
-            let dist = Math.hypot(c.x - p.x, c.y - p.y); 
-            if (dist < 120) { 
-                if (c.panic <= 0) { c.panic = 60; Sound.playCluck(); createParticles(c.x, c.y, "🪶", 2); } 
-                let angle = Math.atan2(c.y - p.y, c.x - p.x); 
-                c.vx = Math.cos(angle) * 5; c.vy = Math.sin(angle) * 5; 
-            } else if (c.panic > 0) { 
-                c.panic--; c.vx *= 0.95; c.vy *= 0.95; 
-            } else { 
-                c.timer--; if(c.timer <= 0) { c.timer = 100 + Math.random() * 200; let angle = Math.random() * Math.PI * 2; c.vx = Math.cos(angle) * 0.5; c.vy = Math.sin(angle) * 0.5; } 
-            } 
-            c.x += c.vx; c.y += c.vy; 
-            c.x = Math.max(50, Math.min(WORLD_W-50, c.x)); c.y = Math.max(50, Math.min(WORLD_H-50, c.y)); 
-        }); 
-    }
-
-    function updateDucks() { for(let d of gameState.entities.ducks) { d.x += Math.sin((Date.now()/1000) + d.offset) * 0.5; } }
-
+    function dropItem() { if(!gameState.inventory) return; Sound.playPop(); const p = gameState.player; let dx = p.flip ? 60 : -60; gameState.entities.items.push({ x: p.x + dx, y: p.y, type: gameState.inventory }); gameState.inventory = null; createParticles(p.x, p.y, "💨", 5); updateUI(); if(gameState.quest.horse) updateQuestUI(); }
+    function handleGardenInteract(b) { if(!b.plant && gameState.inventory && (gameState.inventory.name==='Apfel'||gameState.inventory.name==='Möhre')) { b.plant=gameState.inventory.name; b.growth=0; b.watered=false; Sound.playNoise(0.5); gameState.inventory=null; updateUI(); } else if(b.plant && !b.watered && gameState.inventory && gameState.inventory.name==='Wasser') { b.watered=true; Sound.playSplash(); gameState.inventory=null; updateUI(); } else if(b.plant && b.growth>=100) { gameState.entities.items.push({x:b.x+30,y:b.y+60,type:itemTypes[b.plant==='Apfel'?'apple':'carrot']}); Sound.playPop(); b.plant=null; } }
+    function updateGarden() { gameState.terrain.beds.forEach(b => { if(b.plant && b.watered && b.growth < 100) b.growth += 0.05; }); let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50); document.getElementById('garden-hint').style.display = nearBed ? 'block' : 'none'; let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); document.getElementById('train-btn').style.display = nearFoal ? 'flex' : 'none'; }
+    function toggleTrainingMenu() { let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); if(nearFoal) startTraining(nearFoal); }
+    function startTraining(foal) { gameState.training.active = !gameState.training.active; gameState.training.targetFoal = foal; document.getElementById('training-actions').style.display = gameState.training.active ? 'flex' : 'none'; }
+    function commandFoal(cmd) { const f = gameState.training.targetFoal; if(cmd==='rear') { f.trick='rear'; f.trickTimer=60; Sound.playJump(); createParticles(f.x,f.y,"✨",5); } if(cmd==='lie') { f.trick='lie'; f.trickTimer=100; Sound.playNoise(0.2); createParticles(f.x,f.y,"💤",5); } gameState.stars+=1; updateUI(); gameState.training.active=false; document.getElementById('training-actions').style.display='none'; }
     function checkCollisions() {
         const p = gameState.player;
-        if(!gameState.inventory) {
-            for(let i=0; i<gameState.entities.items.length; i++) {
-                let it = gameState.entities.items[i];
-                if(Math.hypot(p.x - it.x, p.y - it.y) < 40) {
-                    gameState.inventory = it.type; gameState.entities.items.splice(i, 1);
-                    Sound.playPop(); createParticles(p.x, p.y, "✨", 8);
-                    if(it.type.name === 'Apfel') p.stamina = p.maxStamina;
-                    updateUI();
-                    const needyHorse = gameState.entities.horses.find(h => !h.isFoal && !h.satisfied);
-                    if(needyHorse) { gameState.quest.horse = needyHorse; updateQuestUI(); }
-                    break;
-                }
-            }
-        }
-        if(gameState.quest.horse && !gameState.quest.horse.satisfied) {
-            let h = gameState.quest.horse; let dist = Math.hypot(p.x - h.x, p.y - h.y);
-            if(dist < 80) {
-                if(h.want.name === 'Bürste' && gameState.inventory && gameState.inventory.name === 'Bürste') {
-                    if(!gameState.grooming.active) { gameState.grooming.active = true; gameState.grooming.targetHorse = h; gameState.grooming.progress = 0; document.getElementById('groom-hint').style.display = 'block'; }
-                } else if(gameState.inventory && gameState.inventory.name === h.want.name && !gameState.grooming.active) { completeQuest(h); }
-            } else {
-                if(gameState.grooming.active) { gameState.grooming.active = false; gameState.grooming.targetHorse = null; document.getElementById('groom-hint').style.display = 'none'; }
-            }
-        }
+        if(!gameState.inventory) { for(let i=0; i<gameState.entities.items.length; i++) { let it=gameState.entities.items[i]; if(Math.hypot(p.x-it.x, p.y-it.y)<40) { gameState.inventory=it.type; gameState.entities.items.splice(i,1); Sound.playPop(); updateUI(); break; } } }
+        if(gameState.quest.horse && !gameState.quest.horse.satisfied) { let h=gameState.quest.horse; if(Math.hypot(p.x-h.x, p.y-h.y)<80) { if(gameState.inventory && gameState.inventory.name===h.want.name) completeQuest(h); } }
+    }
+    function completeQuest(h) { h.satisfied = true; gameState.inventory = null; gameState.stars += 1; Sound.playSuccess(); createParticles(h.x, h.y, "❤️", 10); updateUI(); updateQuestUI(); setTimeout(() => { const next = gameState.entities.horses.find(nh => !nh.isFoal && !nh.satisfied); gameState.quest.horse = next || null; updateQuestUI(); }, 2000); }
+    function checkHouseSleep() { if(gameState.sleeping) return; const p=gameState.player; const h=gameState.terrain.house; if(h && p.x>h.x+60 && p.x<h.x+h.w-60 && p.y>h.y+h.h-40 && p.y<h.y+h.h+20) { gameState.sleeping=true; Sound.playSleep(); document.getElementById('sleep-overlay').style.opacity=1; setTimeout(() => { gameState.time=0.25; gameState.player.stamina=100; gameState.player.x+=20; updateUI(); setTimeout(() => { document.getElementById('sleep-overlay').style.opacity=0; gameState.sleeping=false; }, 1500); }, 1500); } }
+
+    // --- Draw ---
+    function draw() {
+        if(gameState.mode === MODES.WORLD) drawWorld();
+        else if(gameState.mode === MODES.RACE) drawRace();
+        else if(gameState.mode === MODES.JUMP) drawJump();
+        else if(gameState.mode === MODES.DRESSAGE) drawDressage();
+        
+        if(isTouchDevice && gameState.mode === MODES.WORLD) drawJoystick();
     }
 
-    function completeQuest(h) { h.satisfied = true; gameState.inventory = null; gameState.stars += 1; gameState.grooming.active = false; gameState.grooming.targetHorse = null; document.getElementById('groom-hint').style.display = 'none'; Sound.playSuccess(); createParticles(h.x, h.y, "❤️", 10); updateUI(); updateQuestUI(); setTimeout(() => { const next = gameState.entities.horses.find(nh => !nh.isFoal && !nh.satisfied); gameState.quest.horse = next || null; updateQuestUI(); }, 2000); }
-    let lastMouseX = 0, lastMouseY = 0;
-    function handleGroomingInput(x, y) { if(!gameState.grooming.active) return; let delta = Math.hypot(x - lastMouseX, y - lastMouseY); if(delta > 5) { gameState.grooming.progress += delta; if(Math.random() > 0.8) createParticles(gameState.grooming.targetHorse.x, gameState.grooming.targetHorse.y, "✨", 1); if(gameState.grooming.progress > 2000) { completeQuest(gameState.grooming.targetHorse); } } lastMouseX = x; lastMouseY = y; }
-    window.addEventListener('mousemove', e => handleGroomingInput(e.clientX, e.clientY));
-    window.addEventListener('touchmove', e => handleGroomingInput(e.touches[0].clientX, e.touches[0].clientY));
-
-    function draw() {
-        const H = canvas.height;
-        let t = gameState.time; 
-        
+    function drawWorld() {
         const season = seasons[gameState.seasonIndex];
+        ctx.fillStyle = season.bg; ctx.fillRect(0,0,canvas.width, canvas.height);
         
-        ctx.fillStyle = season.bg;
-        ctx.fillRect(0,0,canvas.width, canvas.height);
-
-        let skyOverlay = null; let ambientLight = 0;
-        if(t < 0.2) { skyOverlay = ctx.createLinearGradient(0,0,0,H); skyOverlay.addColorStop(0, "rgba(135, 206, 235, 0.4)"); skyOverlay.addColorStop(1, "rgba(241, 196, 15, 0.2)"); } else if(t < 0.7) { skyOverlay = "rgba(135, 206, 235, 0.1)"; } else if(t < 0.8) { skyOverlay = ctx.createLinearGradient(0,0,0,H); skyOverlay.addColorStop(0, "rgba(44, 62, 80, 0.4)"); skyOverlay.addColorStop(1, "rgba(230, 126, 34, 0.3)"); ambientLight = (t-0.7)*5; } else { ambientLight = 0.6; }
-
+        // Sky Overlay
+        let t = gameState.time; let overlay = null; if(t<0.2) overlay = "rgba(135,206,235,0.3)"; else if(t>0.7) overlay = `rgba(0,0,50,${(t-0.7)*3})`;
+        
         ctx.save();
         ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(gameState.zoom, gameState.zoom);
         ctx.translate(-canvas.width/2, -canvas.height/2); ctx.translate(-gameState.camX, -gameState.camY);
 
-        ctx.fillStyle = "rgba(0,0,0,0.1)"; for(let i=gameState.footprints.length-1; i>=0; i--) { let fp = gameState.footprints[i]; fp.age -= 0.2; if(fp.age <= 0) gameState.footprints.splice(i,1); else { ctx.globalAlpha = fp.age/100 * 0.3; ctx.beginPath(); ctx.ellipse(fp.x, fp.y+45, 10, 5, 0, 0, Math.PI*2); ctx.fill(); } } ctx.globalAlpha = 1;
+        // Footprints with fading opacity
+        for(let fp of gameState.footprints) { 
+            ctx.fillStyle = `rgba(0,0,0,${Math.min(0.2, fp.age/500)})`; // Opacity based on age
+            ctx.beginPath(); ctx.ellipse(fp.x, fp.y+45, 10, 5, 0, 0, Math.PI*2); ctx.fill(); 
+        }
 
+        // River
         if(gameState.terrain.riverPoints.length>0) {
             ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-            ctx.lineWidth = 140; ctx.strokeStyle = "#90A4AE"; 
-            ctx.beginPath(); gameState.terrain.riverPoints.forEach((p,i)=>i==0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
-            
-            let rCol = season.riverColor;
-            if(season.name === 'Winter') rCol = "#e3f2fd"; 
-            
-            ctx.lineWidth = 120; ctx.strokeStyle = rCol;
-            ctx.beginPath(); gameState.terrain.riverPoints.forEach((p,i)=>i==0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
-            
-            if(season.name === 'Winter') {
-                ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 5;
-                ctx.beginPath(); 
-                gameState.terrain.riverPoints.forEach((p,i) => { if(i%3===0) { ctx.moveTo(p.x-20, p.y-20); ctx.lineTo(p.x+20, p.y+20); } });
-                ctx.stroke();
-            }
+            ctx.lineWidth = 140; ctx.strokeStyle = "#90A4AE"; ctx.beginPath(); gameState.terrain.riverPoints.forEach((p,i)=>i==0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
+            ctx.lineWidth = 120; ctx.strokeStyle = season.riverColor; ctx.beginPath(); gameState.terrain.riverPoints.forEach((p,i)=>i==0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
         }
         
         gameState.terrain.beds.forEach(b => drawGardenBed(ctx, b));
-
         ctx.fillStyle = "#8d6e63"; gameState.terrain.fences.forEach(f => { ctx.beginPath(); ctx.rect(f.x-5, f.y-10, 10, 20); ctx.fill(); });
-
-        gameState.entities.decorations.forEach(d => { ctx.font = "40px Arial"; ctx.fillText(d.emoji, d.x, d.y); });
-        
-        ctx.font = "20px Arial";
-        gameState.entities.leafPiles.forEach(l => { ctx.fillText("🍂", l.x, l.y); });
-        
+        gameState.entities.decorations.forEach(d => { ctx.font = d.type==='tournament'?"80px Arial":"40px Arial"; ctx.fillText(d.emoji, d.x, d.y); });
+        ctx.font = "20px Arial"; gameState.entities.leafPiles.forEach(l => { ctx.fillText("🍂", l.x, l.y); });
         ctx.globalAlpha = 1.0; ctx.fillStyle = "black"; ctx.font = "30px Arial"; gameState.entities.ducks.forEach(d => ctx.fillText("🦆", d.x, d.y));
-
-        ctx.fillStyle = "#5d4037";
-        gameState.terrain.obstacles.forEach(o => { if(o !== gameState.terrain.obstacles.find(obs => obs.x === gameState.terrain.house.x && obs.y === gameState.terrain.house.y)) { ctx.beginPath(); ctx.roundRect(o.x, o.y, o.w, o.h, 10); ctx.fill(); ctx.fillStyle="rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.roundRect(o.x, o.y+5, o.w, o.h-10, 5); ctx.fill(); ctx.fillStyle="#5d4037"; } });
-
-        ctx.font = "30px Arial"; ctx.textAlign = "center";
-        gameState.entities.items.forEach(it => { ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.ellipse(it.x, it.y+10, 15, 6, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "black"; ctx.fillText(it.type.emoji, it.x, it.y + Math.sin(Date.now()/300)*5); });
+        ctx.fillStyle = "#5d4037"; gameState.terrain.obstacles.forEach(o => { ctx.beginPath(); ctx.roundRect(o.x, o.y, o.w, o.h, 10); ctx.fill(); });
+        ctx.font = "30px Arial"; ctx.textAlign = "center"; gameState.entities.items.forEach(it => { ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.ellipse(it.x, it.y+10, 15, 6, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "black"; ctx.fillText(it.type.emoji, it.x, it.y + Math.sin(Date.now()/300)*5); });
 
         const renderList = [
             ...gameState.entities.horses.map(h => ({...h, type:'horse'})),
@@ -960,23 +767,13 @@
         renderList.forEach(obj => {
             if(obj.type === 'house') drawHouse(ctx, gameState.terrain.house);
             if(obj.type === 'horse') {
-                let rot = 0; let ty = 0;
-                if(obj.trickTimer > 0 && obj.trick === 'rear') { rot = -0.4; ty = -20; }
-                if(obj.trickTimer > 0 && obj.trick === 'lie') { rot = Math.PI/2; ty = 30; }
-                
-                ctx.save();
-                if(obj.trick) ctx.translate(obj.x, obj.y);
-                if(rot !== 0) ctx.rotate(rot);
-                if(obj.trick) ctx.translate(-obj.x, -obj.y + ty);
-                
-                drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, false, obj.anim, obj.state==='walk', 0, obj.isFoal?0.6:1);
+                let rot = 0; let ty = 0; if(obj.trick==='rear') { rot = -0.4; ty = -20; } if(obj.trick==='lie') { rot = Math.PI/2; ty = 30; }
+                ctx.save(); if(obj.trick) ctx.translate(obj.x, obj.y); if(rot!==0) ctx.rotate(rot); if(obj.trick) ctx.translate(-obj.x, -obj.y + ty);
+                drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, false, obj.anim||0, obj.state==='walk', 0, obj.isFoal?0.6:1);
                 ctx.restore();
-                
                 if(gameState.quest.horse && obj.id === gameState.quest.horse.id && !obj.satisfied) {
-                    ctx.save(); let bounce = Math.sin(Date.now()/200) * 5; ctx.translate(obj.x, obj.y - 80 + bounce); ctx.fillStyle = "white"; ctx.beginPath(); ctx.ellipse(0, 0, 30, 25, 0, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#333"; ctx.lineWidth = 3; ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, 25); ctx.lineTo(-10, 40); ctx.lineTo(10, 25); ctx.fillStyle="white"; ctx.fill(); ctx.stroke(); ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "black"; ctx.fillText(obj.want.emoji, 0, 0); ctx.fillStyle="white"; ctx.beginPath(); ctx.moveTo(-5,23); ctx.lineTo(5,23); ctx.lineTo(0,30); ctx.fill(); ctx.restore();
+                     ctx.save(); let bounce = Math.sin(Date.now()/200) * 5; ctx.translate(obj.x, obj.y - 80 + bounce); ctx.fillStyle = "white"; ctx.beginPath(); ctx.ellipse(0, 0, 30, 25, 0, 0, Math.PI*2); ctx.fill(); ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "black"; ctx.fillText(obj.want.emoji, 0, 0); ctx.restore();
                 }
-                if(gameState.grooming.active && gameState.grooming.targetHorse === obj) { ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.arc(obj.x, obj.y, 40, 0, Math.PI*2); ctx.fill(); }
-                if(gameState.training.active && gameState.training.targetFoal === obj) { ctx.strokeStyle = "#f1c40f"; ctx.lineWidth=3; ctx.setLineDash([5,5]); ctx.beginPath(); ctx.arc(obj.x, obj.y, 30, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]); }
             }
             if(obj.type === 'dog') drawDog(ctx, obj);
             if(obj.type === 'chicken') drawChicken(ctx, obj);
@@ -984,126 +781,170 @@
         });
 
         gameState.terrain.trees.forEach(t => drawTree(t));
+        ctx.font = "20px Arial"; for(let i=gameState.particles.length-1; i>=0; i--) { let p = gameState.particles[i]; p.y -= 1; p.life -= 0.02; ctx.globalAlpha = p.life; ctx.fillText(p.char, p.x, p.y); if(p.life<=0) gameState.particles.splice(i,1); } ctx.globalAlpha = 1; 
 
-        ctx.font = "20px Arial"; for(let i=gameState.particles.length-1; i>=0; i--) { let p = gameState.particles[i]; p.y -= 1; p.life -= 0.02; ctx.globalAlpha = p.life; ctx.fillText(p.char, p.x, p.y); if(p.life<=0) gameState.particles.splice(i,1); } ctx.globalAlpha = 1; ctx.restore();
-
-        ctx.fillStyle = "white"; ctx.font = "20px Fredoka"; ctx.textAlign = "right"; 
-        ctx.fillText(season.name, canvas.width - 20, 100);
-
-        if(skyOverlay) { ctx.fillStyle = skyOverlay; ctx.fillRect(0,0,canvas.width, canvas.height); }
-        if(ambientLight > 0) {
-            ctx.fillStyle = `rgba(0,0,10,${ambientLight})`; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            if(ambientLight > 0.3) {
-                let px = (gameState.player.x - gameState.camX) * gameState.zoom + canvas.width/2; let py = (gameState.player.y - gameState.camY) * gameState.zoom + canvas.height/2;
-                const g = ctx.createRadialGradient(px, py, 20*gameState.zoom, px, py, 150*gameState.zoom); g.addColorStop(0, "rgba(255, 200, 100, 0.3)"); g.addColorStop(1, "rgba(0,0,0,0)");
-                ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, 150*gameState.zoom, 0, Math.PI*2); ctx.fill();
-                if(gameState.terrain.house) { let hx = (gameState.terrain.house.x + gameState.terrain.house.w/2 - gameState.camX) * gameState.zoom + canvas.width/2; let hy = (gameState.terrain.house.y + gameState.terrain.house.h/2 - gameState.camY) * gameState.zoom + canvas.height/2; const gh = ctx.createRadialGradient(hx, hy, 10*gameState.zoom, hx, hy, 60*gameState.zoom); gh.addColorStop(0, "rgba(255, 255, 200, 0.5)"); gh.addColorStop(1, "rgba(0,0,0,0)"); ctx.fillStyle = gh; ctx.beginPath(); ctx.arc(hx, hy, 60*gameState.zoom, 0, Math.PI*2); ctx.fill(); }
-                ctx.restore();
-            }
-        }
-
-        if(gameState.weather !== 'sunny') {
-            ctx.strokeStyle = (gameState.weather === 'rain') ? "rgba(100,150,255,0.5)" : "rgba(255,255,255,0.8)"; ctx.lineWidth = (gameState.weather === 'rain') ? 2 : 4; ctx.beginPath();
-            for(let i=0; i<100; i++) { let px = (Date.now()/5 + i*157) % canvas.width; let py = (Date.now()/2 + i*313) % canvas.height; if(gameState.weather === 'rain') { ctx.moveTo(px, py); ctx.lineTo(px-5, py+10); } else { ctx.moveTo(px, py); ctx.lineTo(px+2, py+2); } } ctx.stroke();
-        }
+        ctx.restore();
         
-        if(isTouchDevice) drawJoystick();
+        ctx.fillStyle = "white"; ctx.font = "20px Fredoka"; ctx.textAlign = "right"; ctx.fillText(season.name, canvas.width - 20, 100);
+        if(overlay) { ctx.fillStyle = overlay; ctx.fillRect(0,0,canvas.width, canvas.height); }
     }
     
-    function drawGardenBed(ctx, b) {
-        ctx.fillStyle = b.watered ? "#5d4037" : "#8d6e63"; 
-        ctx.fillRect(b.x, b.y, b.w, b.h);
-        ctx.strokeStyle = "#4e342e"; ctx.lineWidth=2; ctx.strokeRect(b.x, b.y, b.w, b.h);
+    function drawRace() {
+        ctx.fillStyle = "#e67e22"; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.save(); ctx.translate(100 - gameState.player.x, 0); 
+        ctx.fillStyle = "#d35400"; ctx.fillRect(0, 100, 5000, 10); ctx.fillRect(0, 600, 5000, 10);
+        ctx.fillStyle = "white"; for(let i=0; i<10; i++) { ctx.fillRect(5000, 100 + i*50, 20, 20); ctx.fillStyle = ctx.fillStyle==="#000"?"#fff":"#000"; }
+        ctx.fillStyle = "#555"; for(let o of gameState.minigame.objects) ctx.fillRect(o.x, o.y, o.w, o.h);
         
-        if(b.plant) {
-            let emoji = "🌱";
-            if(b.growth > 30) emoji = "🌿";
-            if(b.growth >= 100) emoji = b.plant === 'Apfel' ? "🍎" : "🥕";
-            
-            ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-            ctx.fillText(emoji, b.x + b.w/2, b.y + b.h/2);
-            
-            if(b.growth < 100) {
-                ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(b.x+5, b.y+b.h-10, b.w-10, 5);
-                ctx.fillStyle = "#2ecc71"; ctx.fillRect(b.x+5, b.y+b.h-10, (b.w-10)*(b.growth/100), 5);
-            }
+        // Draw Opponents with realistic horse function
+        for(let op of gameState.minigame.opponents) {
+            drawRealisticHorse(ctx, op.x, op.y, op.color, false, false, (op.animFrame||0), true, 0, 1);
         }
+        // Draw Player
+        drawRealisticHorse(ctx, gameState.player.x, gameState.player.y, gameState.player.color, false, true, gameState.player.animFrame, true, 0, 1);
+        ctx.restore();
+    }
+
+    function drawJump() {
+        ctx.fillStyle = "#27ae60"; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.save(); ctx.translate(100 - gameState.player.x, 0);
+        ctx.fillStyle = "#c0392b"; ctx.fillRect(0, 480, 4500, 40);
+        for(let f of gameState.minigame.objects) { ctx.fillStyle = f.cleared ? "#2ecc71" : "#fff"; ctx.fillRect(f.x, 400, 20, 100); ctx.fillStyle = "red"; ctx.fillRect(f.x, 400, 20, 10); }
+        
+        drawRealisticHorse(ctx, gameState.player.x, gameState.player.y, gameState.player.color, false, true, gameState.player.animFrame, true, gameState.player.z, 1);
+        ctx.restore();
+    }
+
+    function drawDressage() {
+        ctx.fillStyle = "#8e44ad"; ctx.fillRect(0,0,canvas.width,canvas.height);
+        let targetY = canvas.height - 100; ctx.beginPath(); ctx.arc(canvas.width/2, targetY, 40, 0, Math.PI*2); ctx.strokeStyle = "white"; ctx.lineWidth = 5; ctx.stroke();
+        ctx.textAlign = "center";
+        for(let a of gameState.minigame.objects) { ctx.font = "40px Arial"; ctx.fillStyle = a.hit ? "transparent" : "white"; let symbol = a.key === 'ArrowUp' ? '⬆️' : (a.key === 'ArrowDown' ? '⬇️' : (a.key==='ArrowLeft'?'⬅️':'➡️')); ctx.fillText(symbol, canvas.width/2, a.y); }
+        
+        // Use offset to simulate dance moves
+        let offX = gameState.minigame.dressageOffset.x;
+        let offY = gameState.minigame.dressageOffset.y;
+        drawRealisticHorse(ctx, canvas.width/2 + offX, canvas.height/2 + 50 + offY, gameState.player.color, false, true, gameState.player.animFrame, false, gameState.player.z, 1.2);
+    }
+
+    // --- High Quality Render Functions ---
+    function drawRealisticHorse(ctx, x, y, color, flip, isPlayer, animFrame, isMoving, z=0, scale=1) { 
+        ctx.save(); ctx.translate(x, y - z); ctx.scale(scale, scale); if(flip) ctx.scale(-1, 1); 
+        let hop = isMoving ? Math.sin(animFrame)*3 : 0; let rl = isMoving ? Math.sin(animFrame) : 0; let fl = isMoving ? Math.sin(animFrame+Math.PI) : 0; let hb = isMoving ? Math.sin(animFrame*1.5)*2 : Math.sin(Date.now()/600)*2; ctx.translate(0, hop); 
+        if(z < 50) { ctx.fillStyle = `rgba(0,0,0,${0.2 - z/200})`; ctx.beginPath(); ctx.ellipse(0, 50-hop+z, 25, 6, 0, 0, Math.PI*2); ctx.fill(); } 
+        ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 8; 
+        ctx.beginPath(); ctx.moveTo(-20, 10); ctx.quadraticCurveTo(-25+rl*10, 25, -22+rl*15, 35); ctx.lineTo(-22+rl*18, 50); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(-24+rl*18, 50, 6, 4); ctx.fill(); ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(20, 10); ctx.quadraticCurveTo(25+fl*10, 25, 22+fl*12, 35); ctx.lineTo(22+fl*15, 50); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(20+fl*15, 50, 6, 4); ctx.fill(); 
+        ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(25, 5); ctx.bezierCurveTo(30, 20, 10, 25, -10, 22); ctx.bezierCurveTo(-30, 20, -35, 5, -25, -5); ctx.bezierCurveTo(-15, -10, 10, -10, 25, 5); ctx.fill(); 
+        if(isPlayer && gameState.player.outfit.saddlePad) { ctx.fillStyle = gameState.player.outfit.saddlePad; ctx.beginPath(); ctx.moveTo(5, -5); ctx.lineTo(15, 10); ctx.lineTo(-10, 12); ctx.lineTo(-15, -5); ctx.fill(); } 
+        let rl2 = isMoving ? Math.sin(animFrame+Math.PI) : 0; ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(-15, 10); ctx.quadraticCurveTo(-20+rl2*10, 25, -17+rl2*15, 35); ctx.lineTo(-17+rl2*18, 52); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(-19+rl2*18, 52, 6, 4); ctx.fill(); 
+        let fl2 = isMoving ? Math.sin(animFrame) : 0; ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(15, 10); ctx.quadraticCurveTo(20+fl2*10, 25, 17+fl2*12, 35); ctx.lineTo(17+fl2*15, 52); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(15+fl2*15, 52, 6, 4); ctx.fill(); 
+        ctx.save(); ctx.translate(16, -6+hb); ctx.rotate(-0.2); ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(-10, 15); ctx.lineTo(0, -25); ctx.lineTo(10, -20); ctx.lineTo(12, 15); ctx.fill(); ctx.beginPath(); ctx.arc(6, -25, 9, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(13, -22, 12, 7, 0.2, 0, Math.PI*2); ctx.fill(); 
+        ctx.fillStyle = isPlayer ? gameState.player.maneColor : "#2c2c2c"; ctx.beginPath(); ctx.moveTo(-4,-35); ctx.quadraticCurveTo(-15,-25,-10,0); ctx.lineTo(0,-25); ctx.fill(); ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(6,-27,3.5,0,Math.PI*2); ctx.fill(); ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(7,-27,1.5,0,Math.PI*2); ctx.fill(); ctx.restore(); 
+        ctx.strokeStyle = isPlayer ? gameState.player.maneColor : "#2c2c2c"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(-28, 0); let tw = isMoving ? Math.sin(animFrame*2)*5 : Math.sin(Date.now()/300)*3; ctx.quadraticCurveTo(-45, 10, -40+tw, 35); ctx.stroke(); 
+        if(isPlayer && gameState.player.outfit.ribbon) { ctx.save(); ctx.translate(-28, 0); ctx.fillStyle = gameState.player.outfit.ribbon; ctx.beginPath(); ctx.arc(0,0, 3, 0, Math.PI*2); ctx.fill(); ctx.restore(); } 
+        ctx.restore(); 
     }
     
-    function drawJoystick() { ctx.beginPath(); ctx.arc(joy.baseX, joy.baseY, joy.radius, 0, Math.PI*2); ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 4; ctx.fill(); ctx.stroke(); let x = joy.active ? joy.stickX : joy.baseX; let y = joy.active ? joy.stickY : joy.baseY; ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI*2); ctx.fillStyle = "white"; ctx.fill(); }
+    function drawTree(t) { let color = seasons[gameState.seasonIndex].treeColor; if(gameState.weather==='snow') color = "#bdc3c7"; else if(gameState.weather==='rain') color = "#1e8449"; ctx.fillStyle = "#795548"; ctx.beginPath(); ctx.rect(t.x-8, t.y, 16, 20); ctx.fill(); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(t.x, t.y-30, t.size/2, 0, Math.PI*2); ctx.fill(); if(gameState.weather !== 'snow' && t.apples && t.apples.length > 0) { ctx.fillStyle = "#c0392b"; t.apples.forEach(a => { ctx.beginPath(); ctx.arc(t.x+a.ox, t.y-30+a.oy, 5, 0, Math.PI*2); ctx.fill(); }); } }
+    function drawGardenBed(ctx, b) { ctx.fillStyle = b.watered ? "#5d4037" : "#8d6e63"; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeStyle = "#4e342e"; ctx.lineWidth=2; ctx.strokeRect(b.x, b.y, b.w, b.h); if(b.plant) { let emoji = "🌱"; if(b.growth > 30) emoji = "🌿"; if(b.growth >= 100) emoji = b.plant === 'Apfel' ? "🍎" : "🥕"; ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(emoji, b.x + b.w/2, b.y + b.h/2); if(b.growth < 100) { ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(b.x+5, b.y+b.h-10, b.w-10, 5); ctx.fillStyle = "#2ecc71"; ctx.fillRect(b.x+5, b.y+b.h-10, (b.w-10)*(b.growth/100), 5); } } }
     function drawHouse(ctx, h) { ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(h.x+5, h.y+h.h-5, h.w, 10); ctx.fillStyle = "#ecf0f1"; ctx.fillRect(h.x, h.y, h.w, h.h); ctx.fillStyle = "#5d4037"; ctx.fillRect(h.x, h.y, 10, h.h); ctx.fillRect(h.x+h.w-10, h.y, 10, h.h); ctx.fillRect(h.x, h.y, h.w, 10); ctx.fillRect(h.x, h.y+h.h-10, h.w, 10); ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(h.x+h.w, h.y+h.h); ctx.strokeStyle="#5d4037"; ctx.lineWidth=5; ctx.stroke(); ctx.beginPath(); ctx.moveTo(h.x+h.w, h.y); ctx.lineTo(h.x, h.y+h.h); ctx.stroke(); ctx.fillStyle = "#c0392b"; ctx.beginPath(); ctx.moveTo(h.x-10, h.y); ctx.lineTo(h.x + h.w/2, h.y - 60); ctx.lineTo(h.x + h.w + 10, h.y); ctx.fill(); ctx.fillStyle = "#3e2723"; ctx.fillRect(h.x + h.w/2 - 15, h.y + h.h - 40, 30, 40); ctx.fillStyle = "#8d6e63"; ctx.fillRect(h.x + h.w/2 - 30, h.y - 20, 60, 20); ctx.fillStyle = "#fff"; ctx.font = "12px Fredoka"; ctx.textAlign = "center"; ctx.fillText("Gute Nacht", h.x + h.w/2, h.y - 6); }
     function drawChicken(ctx, c) { ctx.save(); ctx.translate(c.x, c.y); if(c.vx < 0) ctx.scale(-1, 1); let bounce = c.panic > 0 ? Math.sin(Date.now()/50)*5 : Math.abs(Math.sin(Date.now()/200))*2; ctx.translate(0, -bounce); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 0, 10, 8, 0, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.moveTo(-8, -2); ctx.lineTo(-12, -8); ctx.lineTo(-10, -2); ctx.fill(); ctx.beginPath(); ctx.arc(6, -6, 5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.ellipse(6, -10, 3, 2, 0, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(8, -4, 2, 3, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#f39c12"; ctx.beginPath(); ctx.moveTo(9, -7); ctx.lineTo(13, -5); ctx.lineTo(9, -3); ctx.fill(); ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(7, -7, 1, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#ddd"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI, false); ctx.stroke(); ctx.restore(); }
     function drawDog(ctx, d) { ctx.save(); ctx.translate(d.x, d.y); if(d.flip) ctx.scale(-1, 1); let l = Math.sin(d.anim)*4; let headBob = Math.abs(Math.sin(d.anim*2))*2; let tailWag = Math.sin(d.anim*3)*0.5; ctx.strokeStyle = "#e5e5e5"; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5-l, 20); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10+l, 20); ctx.stroke(); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 5, 14, 8, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.arc(-5, 2, 4, 0, Math.PI*2); ctx.fill(); ctx.save(); ctx.translate(12, 0); ctx.rotate(-0.5 + tailWag); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, -6, 2, 6, 0, 0, Math.PI*2); ctx.fill(); ctx.restore(); ctx.strokeStyle = "red"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-8, 5); ctx.lineTo(-8, -5); ctx.stroke(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5+l, 20); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10-l, 20); ctx.stroke(); ctx.save(); ctx.translate(-12, -8 + headBob); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.ellipse(-2, -6, 3, 6, -0.5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(6, -4, 3, 6, 0.5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.arc(-3, -2, 4, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(-8, 1, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(-3, -2, 1.5, 0, Math.PI*2); ctx.fill(); ctx.restore(); ctx.restore(); }
-    function drawTree(t) { let color = seasons[gameState.seasonIndex].treeColor; if(gameState.weather==='snow') color = "#bdc3c7"; else if(gameState.weather==='rain') color = "#1e8449"; ctx.fillStyle = "#795548"; ctx.beginPath(); ctx.rect(t.x-8, t.y, 16, 20); ctx.fill(); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(t.x, t.y-30, t.size/2, 0, Math.PI*2); ctx.fill(); if(gameState.weather !== 'snow' && t.apples && t.apples.length > 0) { ctx.fillStyle = "#c0392b"; t.apples.forEach(a => { ctx.beginPath(); ctx.arc(t.x+a.ox, t.y-30+a.oy, 5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.beginPath(); ctx.arc(t.x+a.ox-1, t.y-30+a.oy-1, 2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#c0392b"; }); } }
-    function drawRealisticHorse(ctx, x, y, color, flip, isPlayer, animFrame, isMoving, z=0, scale=1) { ctx.save(); ctx.translate(x, y - z); ctx.scale(scale, scale); if(flip) ctx.scale(-1, 1); let hop = isMoving ? Math.sin(animFrame)*3 : 0; let rl = isMoving ? Math.sin(animFrame) : 0; let fl = isMoving ? Math.sin(animFrame+Math.PI) : 0; let hb = isMoving ? Math.sin(animFrame*1.5)*2 : Math.sin(Date.now()/600)*2; ctx.translate(0, hop); if(z < 50) { ctx.fillStyle = `rgba(0,0,0,${0.2 - z/200})`; ctx.beginPath(); ctx.ellipse(0, 50-hop+z, 25, 6, 0, 0, Math.PI*2); ctx.fill(); } ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(-20, 10); ctx.quadraticCurveTo(-25+rl*10, 25, -22+rl*15, 35); ctx.lineTo(-22+rl*18, 50); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(-24+rl*18, 50, 6, 4); ctx.fill(); ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(20, 10); ctx.quadraticCurveTo(25+fl*10, 25, 22+fl*12, 35); ctx.lineTo(22+fl*15, 50); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(20+fl*15, 50, 6, 4); ctx.fill(); ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(25, 5); ctx.bezierCurveTo(30, 20, 10, 25, -10, 22); ctx.bezierCurveTo(-30, 20, -35, 5, -25, -5); ctx.bezierCurveTo(-15, -10, 10, -10, 25, 5); ctx.fill(); if(isPlayer && gameState.player.outfit.saddlePad) { ctx.fillStyle = gameState.player.outfit.saddlePad; ctx.beginPath(); ctx.moveTo(5, -5); ctx.lineTo(15, 10); ctx.lineTo(-10, 12); ctx.lineTo(-15, -5); ctx.fill(); } let rl2 = isMoving ? Math.sin(animFrame+Math.PI) : 0; ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(-15, 10); ctx.quadraticCurveTo(-20+rl2*10, 25, -17+rl2*15, 35); ctx.lineTo(-17+rl2*18, 52); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(-19+rl2*18, 52, 6, 4); ctx.fill(); let fl2 = isMoving ? Math.sin(animFrame) : 0; ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(15, 10); ctx.quadraticCurveTo(20+fl2*10, 25, 17+fl2*12, 35); ctx.lineTo(17+fl2*15, 52); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(15+fl2*15, 52, 6, 4); ctx.fill(); ctx.save(); ctx.translate(16, -6+hb); ctx.rotate(-0.2); ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(-10, 15); ctx.lineTo(0, -25); ctx.lineTo(10, -20); ctx.lineTo(12, 15); ctx.fill(); ctx.beginPath(); ctx.arc(6, -25, 9, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(13, -22, 12, 7, 0.2, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = isPlayer ? gameState.player.maneColor : "#2c2c2c"; ctx.beginPath(); ctx.moveTo(-4,-35); ctx.quadraticCurveTo(-15,-25,-10,0); ctx.lineTo(0,-25); ctx.fill(); ctx.fillStyle = "white"; ctx.beginPath(); ctx.arc(6,-27,3.5,0,Math.PI*2); ctx.fill(); ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(7,-27,1.5,0,Math.PI*2); ctx.fill(); ctx.restore(); ctx.strokeStyle = isPlayer ? gameState.player.maneColor : "#2c2c2c"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(-28, 0); let tw = isMoving ? Math.sin(animFrame*2)*5 : Math.sin(Date.now()/300)*3; ctx.quadraticCurveTo(-45, 10, -40+tw, 35); ctx.stroke(); if(isPlayer && gameState.player.outfit.ribbon) { ctx.save(); ctx.translate(-28, 0); ctx.fillStyle = gameState.player.outfit.ribbon; ctx.beginPath(); ctx.arc(0,0, 3, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(0, 3, 5, 2, Math.PI/4, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(0, 3, 5, 2, -Math.PI/4, 0, Math.PI*2); ctx.fill(); ctx.restore(); } if(isPlayer) { ctx.fillStyle = "#c0392b"; ctx.beginPath(); ctx.moveTo(5, -5); ctx.quadraticCurveTo(0, 0, -15, -5); ctx.quadraticCurveTo(-10, 10, 5, 10); ctx.fill(); } ctx.restore(); }
-    
-    function changeZoom(d) { gameState.zoom = Math.max(0.5, Math.min(2.0, gameState.zoom + d)); }
+    function drawJoystick() { ctx.beginPath(); ctx.arc(joy.baseX, joy.baseY, joy.radius, 0, Math.PI*2); ctx.fillStyle="rgba(255,255,255,0.2)"; ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 4; ctx.fill(); ctx.stroke(); let x = joy.active ? joy.stickX : joy.baseX; let y = joy.active ? joy.stickY : joy.baseY; ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI*2); ctx.fillStyle = "white"; ctx.fill(); }
     function createParticles(x, y, char, count) { for(let i=0; i<count; i++) gameState.particles.push({x:x+(Math.random()-0.5)*40, y:y, char:char, life:1.0}); }
+    function changeZoom(d) { gameState.zoom = Math.max(0.5, Math.min(2.0, gameState.zoom + d)); }
     function isNearRiver(x, y, dist) { for(let p of gameState.terrain.riverPoints) { if(Math.hypot(x - p.x, y - p.y) < dist) return true; } return false; }
-    
-    function updateUI() { document.getElementById('inventory-display').innerText = gameState.inventory ? gameState.inventory.name : "Nichts"; document.getElementById('star-display').innerText = gameState.stars; document.getElementById('drop-btn').style.display = gameState.inventory ? "block" : "none"; let h = Math.floor(gameState.time * 24); let m = Math.floor((gameState.time * 24 * 60) % 60); document.getElementById('clock-display').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`; document.getElementById('stamina-bar').style.width = gameState.player.stamina + '%'; }
-    function updateQuestUI() { const h = gameState.quest.horse; const box = document.getElementById('quest-box'); const text = document.getElementById('quest-text'); if(!h) { text.innerText = "Alle zufrieden!"; box.style.borderLeftColor = "#ccc"; box.style.display = 'block'; setTimeout(() => { if(!gameState.quest.horse) box.style.display = 'none'; }, 3000); return; } box.style.display = 'block'; if(gameState.inventory && gameState.inventory.name === h.want.name) { text.innerHTML = `Gib <b>${h.want.name}</b> ab!`; box.style.borderLeftColor = "#2ecc71"; } else { text.innerHTML = `Ein Pferd möchte:<br><b>${h.want.name}</b> ${h.want.emoji}`; box.style.borderLeftColor = "#FFD700"; } }
 
-    function initShop() { const grid = document.getElementById('shop-grid'); grid.innerHTML = ""; shopItems.forEach(item => { let div = document.createElement('div'); div.className = 'shop-item'; div.innerHTML = `<span style="font-size:30px">${item.emoji}</span><b>${item.name}</b><span>⭐ ${item.cost}</span>`; div.onclick = () => buyItem(item); grid.appendChild(div); }); }
-    function buyItem(item) { if(gameState.stars >= item.cost) { gameState.stars -= item.cost; Sound.playSuccess(); gameState.entities.decorations.push({ x: gameState.player.x + (Math.random()-0.5)*100, y: gameState.player.y + (Math.random()-0.5)*100, emoji: item.emoji }); updateUI(); closeModals(); } else { alert("Nicht genug Sterne!"); } }
-    
-    function initCustomize() { updateCustomizeUI(); }
-    function updateCustomizeUI() { const colors = ['#654321', '#212121', '#eeeeee', '#d7ccc8', '#a1887f']; const manes = ['#2c2c2c', '#eeeeee', '#8B4513']; const padColors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#ffffff']; const ribbonColors = [null, '#e74c3c', '#3498db', '#f1c40f', '#ff69b4']; const createSwatches = (containerId, list, currentVal, setter) => { const container = document.getElementById(containerId); container.innerHTML = ''; list.forEach(c => { let d = document.createElement('div'); d.className = 'color-swatch' + (currentVal === c ? ' selected' : ''); if(c === null) { d.style.background = '#ccc'; d.innerText = "❌"; d.style.display="flex"; d.style.alignItems="center"; d.style.justifyContent="center"; } else d.style.background = c; d.onclick = () => { setter(c); Sound.playPop(); updateCustomizeUI(); }; container.appendChild(d); }); }; createSwatches('coat-colors', colors, gameState.player.color, (c) => gameState.player.color = c); createSwatches('mane-colors', manes, gameState.player.maneColor, (c) => gameState.player.maneColor = c); createSwatches('pad-colors', padColors, gameState.player.outfit.saddlePad, (c) => gameState.player.outfit.saddlePad = c); createSwatches('ribbon-colors', ribbonColors, gameState.player.outfit.ribbon, (c) => gameState.player.outfit.ribbon = c); }
-    function openShop() { document.getElementById('shop-stars').innerText = gameState.stars; document.getElementById('shop-modal').style.display = 'flex'; }
-    function openCustomize() { updateCustomizeUI(); document.getElementById('customize-modal').style.display = 'flex'; }
-    function closeModals() { document.getElementById('shop-modal').style.display = 'none'; document.getElementById('customize-modal').style.display = 'none'; }
-
-    window.addEventListener('blur', () => { 
-        keys.w = false; keys.a = false; keys.s = false; keys.d = false; keys.Shift = false; keys.Space = false;
-        updateInputDebug();
-    });
-
-    function updateInputDebug() {
-        let s = "Keys: ";
-        if(keys.w) s+="W ";
-        if(keys.a) s+="A ";
-        if(keys.s) s+="S ";
-        if(keys.d) s+="D ";
-        if(keys.Space) s+="Space ";
-        document.getElementById('input-debug').innerText = s;
+    function updateUI() { 
+        document.getElementById('inventory-display').innerText = gameState.inventory ? gameState.inventory.emoji : "Leer"; 
+        document.getElementById('star-display').innerText = gameState.stars; 
+        document.getElementById('drop-btn').style.display = gameState.inventory ? "block" : "none"; 
+        let h = Math.floor(gameState.time * 24); 
+        let m = Math.floor((gameState.time * 24 * 60) % 60); 
+        document.getElementById('clock-display').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`; 
+        document.getElementById('stamina-bar').style.width = gameState.player.stamina + '%'; 
     }
 
-    window.addEventListener('keydown', e => { 
-        if(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
-        
-        const k = e.key.toLowerCase();
-        const c = e.code;
+    function updateQuestUI() { 
+        const h = gameState.quest.horse; 
+        const box = document.getElementById('quest-box'); 
+        const text = document.getElementById('quest-text'); 
+        if(!h) { 
+            text.innerText = "Alle zufrieden!"; 
+            box.style.borderLeftColor = "#ccc"; 
+            box.style.display = 'block'; 
+            setTimeout(() => { if(!gameState.quest.horse) box.style.display = 'none'; }, 3000); 
+            return; 
+        } 
+        box.style.display = 'block'; 
+        if(gameState.inventory && gameState.inventory.name === h.want.name) { 
+            text.innerHTML = `Gib <b>${h.want.name}</b> ab!`; 
+            box.style.borderLeftColor = "#2ecc71"; 
+        } else { 
+            text.innerHTML = `Ein Pferd möchte:<br><b>${h.want.name}</b> ${h.want.emoji}`; 
+            box.style.borderLeftColor = "#FFD700"; 
+        } 
+    }
 
-        if(c === 'KeyW' || c === 'ArrowUp' || k === 'w') keys.w = true; 
-        if(c === 'KeyS' || c === 'ArrowDown' || k === 's') keys.s = true; 
-        if(c === 'KeyA' || c === 'ArrowLeft' || k === 'a') keys.a = true; 
-        if(c === 'KeyD' || c === 'ArrowRight' || k === 'd') keys.d = true; 
-        if(e.key === 'Shift') keys.Shift = true; 
-        if(c === 'Space') { keys.Space = true; playerJump(); } 
-        if(c === 'KeyQ' || c === 'KeyX' || k === 'q' || k === 'x') interact(); 
-        
-        updateInputDebug();
-    });
+    // --- Robust Inputs (Fix for Sticky Keys on Shift) ---
+    function handleMobileJump() { keys.Space=true; setTimeout(()=>keys.Space=false, 150); }
     
-    window.addEventListener('keyup', e => { 
-        const k = e.key.toLowerCase();
-        const c = e.code;
+    window.addEventListener('keydown', e => {
+        // Prevent default scrolling for game keys
+        if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault();
+        
+        // Map Codes to Game Keys (Code is case-insensitive/layout invariant)
+        if(e.code === 'KeyW') keys.w = true;
+        if(e.code === 'KeyA') keys.a = true;
+        if(e.code === 'KeyS') keys.s = true;
+        if(e.code === 'KeyD') keys.d = true;
+        if(e.key === 'Shift') keys.Shift = true; // Shift is usually reliable via key
+        if(e.code === 'Space') keys.Space = true;
+        
+        // Arrows
+        if(e.code === 'ArrowUp') keys.ArrowUp = true;
+        if(e.code === 'ArrowDown') keys.ArrowDown = true;
+        if(e.code === 'ArrowLeft') keys.ArrowLeft = true;
+        if(e.code === 'ArrowRight') keys.ArrowRight = true;
 
-        if(c === 'KeyW' || c === 'ArrowUp' || k === 'w') keys.w = false; 
-        if(c === 'KeyS' || c === 'ArrowDown' || k === 's') keys.s = false; 
-        if(c === 'KeyA' || c === 'ArrowLeft' || k === 'a') keys.a = false; 
-        if(c === 'KeyD' || c === 'ArrowRight' || k === 'd') keys.d = false; 
-        if(e.key === 'Shift') keys.Shift = false; 
-        if(c === 'Space') keys.Space = false; 
+        // One-shot actions
+        if(e.code === 'KeyQ' || e.code === 'KeyX') interact();
         
-        updateInputDebug();
+        // Debug
+        // document.getElementById('input-debug').innerText="Key: "+e.code; 
     });
-    
-    window.addEventListener('resize', resize);
-    resize();
-    initUI();
-    
-    console.log("Pferdehof Deluxe v1.6 loaded - Collision fix");
+
+    window.addEventListener('keyup', e => {
+        // Map Codes to Game Keys
+        if(e.code === 'KeyW') keys.w = false;
+        if(e.code === 'KeyA') keys.a = false;
+        if(e.code === 'KeyS') keys.s = false;
+        if(e.code === 'KeyD') keys.d = false;
+        if(e.key === 'Shift') keys.Shift = false;
+        if(e.code === 'Space') keys.Space = false;
+        
+        // Arrows
+        if(e.code === 'ArrowUp') keys.ArrowUp = false;
+        if(e.code === 'ArrowDown') keys.ArrowDown = false;
+        if(e.code === 'ArrowLeft') keys.ArrowLeft = false;
+        if(e.code === 'ArrowRight') keys.ArrowRight = false;
+    });
+
+    function closeModals() { document.querySelectorAll('.overlay').forEach(el => el.style.display = 'none'); }
+    function openCustomize() { document.getElementById('customize-modal').style.display='flex'; updateCustomizeUI(); }
+    function openShop() { document.getElementById('shop-modal').style.display='flex'; document.getElementById('shop-stars').innerText=gameState.stars; }
+    function updateCustomizeUI() { 
+        const setup = (id, list, curr, setter) => { const c=document.getElementById(id); c.innerHTML=''; list.forEach(val => { let d=document.createElement('div'); d.className='color-swatch'+(curr===val?' selected':''); d.style.background=val||'#ccc'; d.onclick=()=>{setter(val);Sound.playPop();updateCustomizeUI();}; c.appendChild(d); }); };
+        setup('coat-colors', ['#654321','#212121','#eeeeee','#d7ccc8'], gameState.player.color, v=>gameState.player.color=v);
+        setup('mane-colors', ['#2c2c2c','#eeeeee','#8B4513'], gameState.player.maneColor, v=>gameState.player.maneColor=v);
+        setup('pad-colors', ['#ffffff','#e74c3c','#3498db','#f1c40f'], gameState.player.outfit.saddlePad, v=>gameState.player.outfit.saddlePad=v);
+        setup('ribbon-colors', [null,'#e74c3c','#3498db'], gameState.player.outfit.ribbon, v=>gameState.player.outfit.ribbon=v);
+    }
+    function initShop() { const grid = document.getElementById('shop-grid'); grid.innerHTML = ""; shopItems.forEach(item => { let div = document.createElement('div'); div.className = 'shop-item'; div.innerHTML = `<span style="font-size:30px">${item.emoji}</span><b>${item.name}</b><span>⭐ ${item.cost}</span>`; div.onclick = () => buyItem(item); grid.appendChild(div); }); }
+    function buyItem(item) { if(gameState.stars >= item.cost) { gameState.stars -= item.cost; Sound.playSuccess(); gameState.entities.decorations.push({ x: gameState.player.x + (Math.random()-0.5)*100, y: gameState.player.y + (Math.random()-0.5)*100, emoji: item.emoji }); updateUI(); closeModals(); } else { alert("Nicht genug Sterne!"); } }
+
+    window.addEventListener('resize', resize); resize(); initUI();
+    console.log("Pferdehof Deluxe v3.6: Minigame Controls Optimization");
 </script>
 </body>
 </html>
