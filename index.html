@@ -248,7 +248,7 @@
         sleeping: false,
         
         // Minigame Data
-        minigame: { active: false, score: 0, timer: 0, objects: [], opponents: [], state: 'warmup', countdown: 3, dressageOffset: {x:0, y:0} }
+        minigame: { active: false, score: 0, timer: 0, objects: [], opponents: [], state: 'warmup', countdown: 3, dressageOffset: {x:0, y:0}, feedbackText: null }
     };
 
     function initUI() {
@@ -318,6 +318,7 @@
         gameState.time = 0.25; 
         // Reset Player on Safe Spot
         gameState.player.x = 600; gameState.player.y = 600;
+        gameState.player.speed = 6; // RESET SPEED FIX
         
         gameState.entities.horses = []; gameState.entities.items = []; gameState.entities.leafPiles = [];
         gameState.entities.dogs = [{x: 1300, y: 1050, vx:0, vy:0, flip: false, anim:0, state:'follow', timer: 500, tx:0, ty:0}];
@@ -509,7 +510,11 @@
         gameState.minigame.timer = 0; gameState.minigame.state = 'warmup'; gameState.minigame.countdown = 3;
         
         document.getElementById('minigame-hud').style.display = 'block'; 
-        document.getElementById('ui-layer').querySelector('.hud-left').style.display='none'; 
+        document.getElementById('ui-layer').querySelector('.hud-left').style.display='none';
+        
+        // Hide hints AND Quest Box (Fix for Speech Bubbles)
+        document.querySelectorAll('.context-hint').forEach(el => el.style.display = 'none');
+        document.getElementById('quest-box').style.display = 'none';
         
         // --- KEYBOARD FOCUS FIX ---
         canvas.focus(); // Force focus to canvas to ensure keys work immediately
@@ -541,7 +546,17 @@
     function setupRace() {
         gameState.player.x = 100; gameState.player.y = 300;
         gameState.minigame.opponents = [ {x:100, y:200, speed: 7, color: '#333', rank:0}, {x:100, y:400, speed: 7.5, color: '#aaa', rank:0}, {x:100, y:500, speed: 6.8, color: '#630', rank:0} ];
-        gameState.minigame.objects = []; for(let i=0; i<20; i++) gameState.minigame.objects.push({x: 500 + Math.random()*4000, y: 150 + Math.random()*400, w:40, h:40});
+        gameState.minigame.objects = []; 
+        
+        // Random obstacles
+        for(let i=0; i<20; i++) gameState.minigame.objects.push({x: 500 + Math.random()*4000, y: 150 + Math.random()*400, w:40, h:40, type:'box'});
+        
+        // Top and Bottom Barriers (Anti-Cheat)
+        for(let i=0; i<60; i++) {
+             gameState.minigame.objects.push({x: i*100, y: 100, w: 40, h: 40, type:'hay'}); // Top edge
+             gameState.minigame.objects.push({x: i*100, y: 600, w: 40, h: 40, type:'hay'}); // Bottom edge
+        }
+        
         document.getElementById('mg-info').innerText = "Drücke so schnell du kannst!";
     }
 
@@ -556,6 +571,10 @@
         if(keys.d || keys.ArrowRight) dx = 1; if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1;
         
         gameState.player.x += (gameState.player.speed + (keys.Shift?2:0)); gameState.player.y += dy * 4;
+        
+        // BOUNDARY CHECK
+        gameState.player.y = Math.max(120, Math.min(580, gameState.player.y));
+        
         gameState.player.animFrame += 0.3;
 
         for(let o of gameState.minigame.objects) { if(Math.abs(gameState.player.x - o.x) < 30 && Math.abs(gameState.player.y - o.y) < 30) { gameState.player.x -= 20; Sound.playFail(); } }
@@ -574,8 +593,10 @@
     // --- 2. JUMP MODE ---
     function setupJump() {
         gameState.player.x = 0; gameState.player.y = 400;
+        gameState.player.z = 0; // Force reset Z
+        gameState.player.vz = 0;
         gameState.minigame.objects = []; for(let i=1; i<=10; i++) gameState.minigame.objects.push({x: i * 400, type: 'fence', cleared: false});
-        document.getElementById('mg-info').innerText = "Drücke LEERTASTE zum Springen!";
+        document.getElementById('mg-info').innerText = "Pfeil Oben oder Tippen!";
     }
 
     function updateJump() {
@@ -583,7 +604,7 @@
              gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown);
              if(gameState.minigame.countdown <= 0) { 
                  gameState.minigame.state = 'play'; 
-                 document.getElementById('mg-info').innerText = "Drücke LEERTASTE zum Springen!";
+                 document.getElementById('mg-info').innerText = "Springe!";
              }
              return;
         }
@@ -591,12 +612,33 @@
 
         gameState.player.x += 8; gameState.player.animFrame += 0.3;
         
-        if(gameState.player.z > 0) {
-            gameState.player.z += gameState.player.vz; gameState.player.vz -= 1; 
-            if(gameState.player.z <= 0) { gameState.player.z = 0; gameState.player.vz = 0; }
-        } else if (keys.Space) { 
-            gameState.player.vz = 15; Sound.playJump(); 
-            keys.Space = false; // Reset key trigger
+        // --- IMPROVED JUMP LOGIC ---
+        // Apply physics
+        if(gameState.player.z > 0 || gameState.player.vz !== 0) {
+            gameState.player.z += gameState.player.vz; 
+            gameState.player.vz -= 0.8; // Gravity
+            if(gameState.player.z <= 0) { 
+                gameState.player.z = 0; 
+                gameState.player.vz = 0; 
+            }
+        } 
+        
+        // Check Inputs (Direct trigger)
+        if ((keys.Space || keys.ArrowUp) && gameState.player.z === 0) { 
+            gameState.player.vz = 20; // High Jump Velocity
+            Sound.playJump(); 
+            // Reset keys to prevent flutter
+            keys.Space = false; 
+            keys.ArrowUp = false;
+        }
+
+        // Show Jump Hint when near obstacle
+        let nearObs = gameState.minigame.objects.find(o => !o.cleared && o.x - gameState.player.x < 250 && o.x - gameState.player.x > 0);
+        if(nearObs) {
+             document.getElementById('mg-info').innerText = "JETZT SPRINGEN!";
+             document.getElementById('mg-info').style.color = "#e74c3c";
+        } else {
+             document.getElementById('mg-info').innerText = "";
         }
 
         for(let f of gameState.minigame.objects) {
@@ -613,6 +655,16 @@
             endMinigame(stars, gameState.minigame.score + " Punkte");
         }
     }
+    
+    // Add Click/Touch Jump Listener (Reliable Fallback)
+    const handleJumpInput = (e) => {
+        if(gameState.mode === MODES.JUMP && gameState.minigame.state === 'play' && gameState.player.z === 0) {
+            gameState.player.vz = 20; 
+            Sound.playJump();
+        }
+    };
+    canvas.addEventListener('mousedown', handleJumpInput);
+    canvas.addEventListener('touchstart', handleJumpInput, {passive: true});
 
     // --- 3. DRESSAGE MODE ---
     const DRESSAGE_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
@@ -620,6 +672,7 @@
         gameState.player.x = canvas.width/2; gameState.player.y = canvas.height/2 + 100;
         gameState.minigame.objects = []; gameState.minigame.timer = 0;
         gameState.minigame.dressageOffset = {x:0, y:0};
+        gameState.minigame.feedbackText = null;
         document.getElementById('mg-info').innerText = "Drücke Pfeiltasten im Takt!";
     }
 
@@ -628,15 +681,19 @@
              gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = "Gleich gehts los!";
              if(gameState.minigame.countdown <= 0) {
                  gameState.minigame.state = 'play';
-                 document.getElementById('mg-info').innerText = "Drücke Pfeiltasten im Takt!";
+                 document.getElementById('mg-info').innerText = "Drücke Pfeiltasten im goldenen Ring!";
              }
              return;
         }
         if(gameState.minigame.state !== 'play') return;
 
         gameState.minigame.timer++;
-        if(gameState.minigame.timer % 40 === 0) { let k = DRESSAGE_KEYS[Math.floor(Math.random()*4)]; gameState.minigame.objects.push({key: k, y: 0, hit: false}); }
-        let targetY = canvas.height - 100; for(let arr of gameState.minigame.objects) { arr.y += 5; }
+        // Slower Spawn (every 60 frames instead of 40)
+        if(gameState.minigame.timer % 60 === 0) { let k = DRESSAGE_KEYS[Math.floor(Math.random()*4)]; gameState.minigame.objects.push({key: k, y: 0, hit: false}); }
+        let targetY = canvas.height - 100; 
+        
+        // Slower Fall Speed (3 instead of 5)
+        for(let arr of gameState.minigame.objects) { arr.y += 3; }
 
         let inputKey = null;
         if(keys.w) { inputKey = 'ArrowUp'; keys.w = false; }
@@ -648,29 +705,43 @@
         else if(keys.d) { inputKey = 'ArrowRight'; keys.d = false; }
         else if(keys.ArrowRight) { inputKey = 'ArrowRight'; keys.ArrowRight = false; }
 
-        // Animation Decay (Slower decay for clearer movement)
+        // Animation Decay
         gameState.minigame.dressageOffset.x *= 0.9;
         gameState.minigame.dressageOffset.y *= 0.9;
         if(gameState.player.z > 0) { gameState.player.z -= 2; }
 
         if(inputKey) {
-            // Visual Movement Feedback (Always triggers on key press)
+            // Visual Movement Feedback
             if(inputKey === 'ArrowLeft') gameState.minigame.dressageOffset.x = -80;
             if(inputKey === 'ArrowRight') gameState.minigame.dressageOffset.x = 80;
             if(inputKey === 'ArrowUp') gameState.player.z = 60; // Rear up visual
             if(inputKey === 'ArrowDown') gameState.minigame.dressageOffset.y = 40; // Bow down
 
-            // Logic Check (Increased window size < 100 for better hit detection)
-            let closest = gameState.minigame.objects.find(a => !a.hit && Math.abs(a.y - targetY) < 100); 
+            // Logic Check - Increased Window
+            let closest = gameState.minigame.objects.find(a => !a.hit && Math.abs(a.y - targetY) < 60); 
             if(closest && closest.key === inputKey) { 
                 closest.hit = true; gameState.minigame.score += 50; 
                 Sound.playSuccess(); gameState.player.animFrame += 1; 
                 createParticles(canvas.width/2, targetY, "✨", 5);
+                gameState.minigame.feedbackText = { text: "Perfekt!", alpha: 1.0, y: targetY - 50 };
+                // Visual Hop on Hit
+                gameState.player.vz = 5; 
+            } else {
+                 // Missed
+                 gameState.minigame.feedbackText = { text: "Ups!", alpha: 1.0, y: targetY - 50 };
             }
         }
+        
+        // Hop Physics
+        if(gameState.player.z > 0 || gameState.player.vz !== 0) {
+            gameState.player.z += gameState.player.vz;
+            gameState.player.vz -= 1;
+            if(gameState.player.z < 0) { gameState.player.z = 0; gameState.player.vz = 0; }
+        }
+
         gameState.minigame.objects = gameState.minigame.objects.filter(a => a.y < canvas.height);
         document.getElementById('mg-score').innerText = gameState.minigame.score;
-        if(gameState.minigame.timer > 1000) { let stars = Math.floor(gameState.minigame.score / 300); if(stars > 5) stars = 5; endMinigame(stars, "Tanz beendet!"); }
+        if(gameState.minigame.timer > 1200) { let stars = Math.floor(gameState.minigame.score / 200); if(stars > 5) stars = 5; endMinigame(stars, "Tanz beendet!"); }
     }
 
     // --- Entity Updates (World) ---
@@ -777,7 +848,11 @@
             }
             if(obj.type === 'dog') drawDog(ctx, obj);
             if(obj.type === 'chicken') drawChicken(ctx, obj);
-            if(obj.type === 'player') drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, true, obj.animFrame, (keys.w||keys.a||keys.s||keys.d||joy.active), obj.z, 1);
+            // FIX: Use velocity check for animation state instead of keys
+            if(obj.type === 'player') {
+                let isMoving = Math.hypot(obj.vx, obj.vy) > 0.1;
+                drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, true, obj.animFrame, isMoving, obj.z, 1);
+            }
         });
 
         gameState.terrain.trees.forEach(t => drawTree(t));
@@ -794,7 +869,16 @@
         ctx.save(); ctx.translate(100 - gameState.player.x, 0); 
         ctx.fillStyle = "#d35400"; ctx.fillRect(0, 100, 5000, 10); ctx.fillRect(0, 600, 5000, 10);
         ctx.fillStyle = "white"; for(let i=0; i<10; i++) { ctx.fillRect(5000, 100 + i*50, 20, 20); ctx.fillStyle = ctx.fillStyle==="#000"?"#fff":"#000"; }
-        ctx.fillStyle = "#555"; for(let o of gameState.minigame.objects) ctx.fillRect(o.x, o.y, o.w, o.h);
+        
+        // Draw Obstacles
+        for(let o of gameState.minigame.objects) {
+            if(o.type === 'hay') ctx.fillStyle = "#f1c40f"; else ctx.fillStyle = "#555";
+            ctx.fillRect(o.x, o.y, o.w, o.h);
+            if(o.type === 'hay') { // Detail for hay
+                 ctx.strokeStyle = "#d4ac0d"; ctx.lineWidth=2; ctx.strokeRect(o.x, o.y, o.w, o.h);
+                 ctx.beginPath(); ctx.moveTo(o.x+5, o.y+5); ctx.lineTo(o.x+o.w-5, o.y+o.h-5); ctx.stroke();
+            }
+        }
         
         // Draw Opponents with realistic horse function
         for(let op of gameState.minigame.opponents) {
@@ -817,14 +901,35 @@
 
     function drawDressage() {
         ctx.fillStyle = "#8e44ad"; ctx.fillRect(0,0,canvas.width,canvas.height);
-        let targetY = canvas.height - 100; ctx.beginPath(); ctx.arc(canvas.width/2, targetY, 40, 0, Math.PI*2); ctx.strokeStyle = "white"; ctx.lineWidth = 5; ctx.stroke();
+        let targetY = canvas.height - 100; 
+        
+        // Target Ring
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = "#f1c40f"; // Gold
+        ctx.beginPath(); ctx.arc(canvas.width/2, targetY, 45, 0, Math.PI*2); ctx.stroke();
+        ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(canvas.width/2, targetY, 48, 0, Math.PI*2); ctx.stroke();
+
         ctx.textAlign = "center";
         for(let a of gameState.minigame.objects) { ctx.font = "40px Arial"; ctx.fillStyle = a.hit ? "transparent" : "white"; let symbol = a.key === 'ArrowUp' ? '⬆️' : (a.key === 'ArrowDown' ? '⬇️' : (a.key==='ArrowLeft'?'⬅️':'➡️')); ctx.fillText(symbol, canvas.width/2, a.y); }
         
+        // Feedback Text
+        if(gameState.minigame.feedbackText && gameState.minigame.feedbackText.alpha > 0) {
+            ctx.font = "bold 60px Fredoka"; 
+            ctx.fillStyle = `rgba(255,255,255,${gameState.minigame.feedbackText.alpha})`;
+            ctx.fillText(gameState.minigame.feedbackText.text, canvas.width/2, gameState.minigame.feedbackText.y);
+            gameState.minigame.feedbackText.alpha -= 0.05;
+            gameState.minigame.feedbackText.y -= 2;
+        }
+
         // Use offset to simulate dance moves
         let offX = gameState.minigame.dressageOffset.x;
         let offY = gameState.minigame.dressageOffset.y;
-        drawRealisticHorse(ctx, canvas.width/2 + offX, canvas.height/2 + 50 + offY, gameState.player.color, false, true, gameState.player.animFrame, false, gameState.player.z, 1.2);
+        
+        // Correct Flip based on input direction
+        let flip = false;
+        if(offX < -10) flip = true; 
+        
+        drawRealisticHorse(ctx, canvas.width/2 + offX, canvas.height/2 + 50 + offY, gameState.player.color, flip, true, gameState.player.animFrame, false, gameState.player.z, 1.2);
     }
 
     // --- High Quality Render Functions ---
@@ -866,6 +971,12 @@
     }
 
     function updateQuestUI() { 
+        // --- FIX: HIDE IF MINIGAME ---
+        if(gameState.mode !== MODES.WORLD) {
+            document.getElementById('quest-box').style.display = 'none';
+            return;
+        }
+
         const h = gameState.quest.horse; 
         const box = document.getElementById('quest-box'); 
         const text = document.getElementById('quest-text'); 
@@ -944,7 +1055,7 @@
     function buyItem(item) { if(gameState.stars >= item.cost) { gameState.stars -= item.cost; Sound.playSuccess(); gameState.entities.decorations.push({ x: gameState.player.x + (Math.random()-0.5)*100, y: gameState.player.y + (Math.random()-0.5)*100, emoji: item.emoji }); updateUI(); closeModals(); } else { alert("Nicht genug Sterne!"); } }
 
     window.addEventListener('resize', resize); resize(); initUI();
-    console.log("Pferdehof Deluxe v3.6: Minigame Controls Optimization");
+    console.log("Pferdehof Deluxe v3.9: Minigame Physics & UI Fixes");
 </script>
 </body>
 </html>
