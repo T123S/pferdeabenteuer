@@ -57,8 +57,8 @@
         .action-circle { width: 70px; height: 70px; border-radius: 50%; background: rgba(255,255,255,0.3); border: 2px solid white; color: white; font-size: 30px; display: flex; justify-content: center; align-items: center; }
         .action-circle:active { background: rgba(255,255,255,0.6); }
 
-        /* Jump Button for Minigame */
-        #mobile-jump-only { position: absolute; bottom: 30px; right: 30px; display: none; pointer-events: auto; }
+        /* Jump Button for Minigame - MOVED TO LEFT */
+        #mobile-jump-only { position: absolute; bottom: 30px; left: 30px; display: none; pointer-events: auto; }
         .big-jump-btn { width: 100px; height: 100px; background: rgba(231, 76, 60, 0.6); border: 4px solid white; border-radius: 50%; color: white; font-size: 40px; display: flex; justify-content: center; align-items: center; }
         .big-jump-btn:active { background: rgba(231, 76, 60, 0.9); transform: scale(0.95); }
 
@@ -75,9 +75,21 @@
         .color-swatch { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #eee; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.1s; }
         .color-swatch.selected { border: 3px solid #000; transform: scale(1.15); box-shadow: 0 0 10px rgba(0,0,0,0.3); }
         
-        /* Highscore Specifics */
+        /* Highscore Specifics - FIX FOR MOBILE TYPING */
         .input-group { margin: 15px 0; }
-        input[type="text"] { padding: 10px; border-radius: 10px; border: 2px solid #ddd; font-family: 'Fredoka', sans-serif; font-size: 18px; width: 60%; text-align: center; }
+        input[type="text"] { 
+            padding: 10px; 
+            border-radius: 10px; 
+            border: 2px solid #ddd; 
+            font-family: 'Fredoka', sans-serif; 
+            font-size: 18px; 
+            width: 60%; 
+            text-align: center; 
+            pointer-events: auto; /* Ensure clickable */
+            user-select: text !important; /* Allow selection */
+            -webkit-user-select: text !important;
+            touch-action: auto; /* Allow focus on mobile */
+        }
         #highscore-list { margin-top: 20px; text-align: left; background: #f9f9f9; padding: 10px; border-radius: 10px; font-size: 16px; max-height: 150px; overflow-y: auto; }
         .hs-entry { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; }
         .hs-entry:last-child { border-bottom: none; }
@@ -176,7 +188,7 @@
             <!-- Highscore Input -->
             <div class="input-group" id="hs-input-group">
                 <input type="text" id="player-name" placeholder="Dein Name" maxlength="12">
-                <button class="btn-blue" style="padding: 10px 20px;" onclick="submitHighscore()">Speichern</button>
+                <button class="btn-blue" style="padding: 10px 20px;" onclick="submitHighscore()" ontouchstart="submitHighscore()">Speichern</button>
             </div>
             
             <div id="highscore-list">Lade Highscores...</div>
@@ -650,7 +662,10 @@
         document.getElementById('quest-box').style.display = 'none';
         
         // --- MOBILE CONTROLS VISIBILITY ---
-        // Hide Joystick default, show for World, Race, Dressage
+        // Hide standard mobile actions in all minigames
+        document.getElementById('mobile-actions').style.display = 'none';
+
+        // Joystick visibility logic
         let showJoystick = (isTouchDevice && (mode === MODES.WORLD || mode === MODES.RACE || mode === MODES.DRESSAGE));
         document.getElementById('joystick-touch-zone').style.display = showJoystick ? 'block' : 'none';
 
@@ -744,6 +759,7 @@
         document.getElementById('result-screen').style.display = 'none';
         
         if(isTouchDevice) {
+            document.getElementById('mobile-actions').style.display = 'flex'; // Restore normal buttons
             document.getElementById('joystick-touch-zone').style.display = 'block';
             document.getElementById('mobile-jump-only').style.display = 'none';
         }
