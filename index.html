@@ -7,9 +7,6 @@
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐴</text></svg>">
     <meta name="theme-color" content="#7BC043">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap');
 
@@ -50,14 +47,22 @@
         
         #drop-btn { background: #e74c3c; color: white; padding: 8px 15px; display: none; font-size: 16px; }
 
+        /* Training Actions */
         #training-actions { position: absolute; bottom: 120px; right: 20px; display: none; flex-direction: column; gap: 10px; pointer-events: auto; }
         .train-btn { background: #f1c40f; color: #333; padding: 10px 20px; font-size: 16px; text-align: right; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+
+        /* FOAL SCHOOL UI */
+        #foal-school-actions { position: absolute; bottom: 30px; right: 30px; display: none; flex-direction: column; gap: 15px; pointer-events: auto; }
+        .school-btn { width: 80px; height: 80px; border-radius: 50%; border: 4px solid white; display: flex; justify-content: center; align-items: center; font-size: 35px; box-shadow: 0 4px 10px rgba(0,0,0,0.4); color: white; transition: transform 0.1s; }
+        .school-btn:active { transform: scale(0.9); }
+        .btn-rear { background: #e74c3c; } /* Steigen */
+        .btn-lie { background: #3498db; } /* Hinlegen */
+        .btn-spin { background: #f1c40f; } /* Drehen */
 
         #mobile-actions { position: absolute; bottom: 30px; right: 30px; display: flex; gap: 20px; pointer-events: auto; }
         .action-circle { width: 70px; height: 70px; border-radius: 50%; background: rgba(255,255,255,0.3); border: 2px solid white; color: white; font-size: 30px; display: flex; justify-content: center; align-items: center; }
         .action-circle:active { background: rgba(255,255,255,0.6); }
 
-        /* Jump Button for Minigame - LINKS UNTEN */
         #mobile-jump-only { position: absolute; bottom: 30px; left: 30px; display: none; pointer-events: auto; }
         .big-jump-btn { width: 100px; height: 100px; background: rgba(231, 76, 60, 0.6); border: 4px solid white; border-radius: 50%; color: white; font-size: 40px; display: flex; justify-content: center; align-items: center; }
         .big-jump-btn:active { background: rgba(231, 76, 60, 0.9); transform: scale(0.95); }
@@ -75,20 +80,8 @@
         .color-swatch { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #eee; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transition: transform 0.1s; }
         .color-swatch.selected { border: 3px solid #000; transform: scale(1.15); box-shadow: 0 0 10px rgba(0,0,0,0.3); }
         
-        /* Highscore Specifics */
         .input-group { margin: 15px 0; }
-        input[type="text"] { 
-            padding: 10px; 
-            border-radius: 10px; 
-            border: 2px solid #ddd; 
-            font-family: 'Fredoka', sans-serif; 
-            font-size: 18px; 
-            width: 60%; 
-            text-align: center; 
-            pointer-events: auto;
-            user-select: text !important;
-            -webkit-user-select: text !important;
-        }
+        input[type="text"] { padding: 10px; border-radius: 10px; border: 2px solid #ddd; font-family: 'Fredoka', sans-serif; font-size: 18px; width: 60%; text-align: center; pointer-events: auto; user-select: text !important; -webkit-user-select: text !important; }
         #highscore-list { margin-top: 20px; text-align: left; background: #f9f9f9; padding: 10px; border-radius: 10px; font-size: 16px; max-height: 150px; overflow-y: auto; }
         .hs-entry { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; }
         .hs-entry:last-child { border-bottom: none; }
@@ -102,7 +95,7 @@
 
     <div id="ui-layer">
         <div class="hud-left">
-            <div class="hud-item"><span>📅</span> <span id="clock-display">06:00</span></div>
+            <div class="hud-item"><span>📅</span> <span id="season-display">Frühling</span> | <span id="clock-display">06:00</span></div>
             <div id="input-debug" style="display:none;">Keys: -</div>
             <div class="hud-row">
                 <div class="hud-item"><span>🎒</span> <span id="inventory-display">Leer</span></div>
@@ -145,6 +138,12 @@
             <button class="train-btn" onclick="commandFoal('lie')">💤 Hinlegen</button>
         </div>
 
+        <div id="foal-school-actions">
+            <button class="school-btn btn-rear" onclick="triggerFoalTrick('rear')">🦄</button>
+            <button class="school-btn btn-lie" onclick="triggerFoalTrick('lie')">💤</button>
+            <button class="school-btn btn-spin" onclick="triggerFoalTrick('spin')">🌪️</button>
+        </div>
+
         <div id="mobile-actions" style="display:none;">
             <button class="action-circle" onclick="handleMobileJump()">🦘</button>
             <button id="mobile-interact" class="action-circle" onclick="interact()" style="background:#f1c40f;">🖐️</button>
@@ -169,11 +168,12 @@
     <div id="tournament-screen" class="overlay">
         <div class="modal-content" style="width:500px;">
             <div class="modal-close" onclick="closeModals()">×</div>
-            <h2>🏆 Reit-Turnier</h2>
-            <p>Wähle eine Disziplin!</p>
+            <h2>🏆 Reit-Turnier & Schule</h2>
+            <p>Wähle eine Aktivität!</p>
             <button class="big-btn btn-blue" onclick="startMinigame('race')">🏇 Wettrennen<br><small>Sei schneller als die anderen!</small></button>
             <button class="big-btn btn-orange" onclick="startMinigame('jump')">🚧 Springreiten<br><small>Springe im richtigen Moment!</small></button>
             <button class="big-btn btn-purple" onclick="startMinigame('dressage')">💃 Dressur<br><small>Drücke die Tasten im Takt!</small></button>
+            <button class="big-btn btn-teal" onclick="startMinigame('foal_school')">🎓 Fohlen-Schule<br><small>Bring dem Fohlen Tricks bei!</small></button>
         </div>
     </div>
     
@@ -184,7 +184,6 @@
             <div id="result-text" style="font-size:24px; margin:20px 0;"></div>
             <div style="color:#f1c40f; font-size:30px; margin-bottom:10px;">+ <span id="result-stars">0</span> ⭐</div>
             
-            <!-- Highscore Input -->
             <div class="input-group" id="hs-input-group">
                 <input type="text" id="player-name" placeholder="Dein Name" maxlength="12">
                 <button class="btn-blue" style="padding: 10px 20px;" onclick="submitHighscore()" ontouchstart="submitHighscore()">Speichern</button>
@@ -234,276 +233,185 @@
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     
     // --- Globale Variablen ---
-    var joy = { active: false, touchId: null, baseX: 110, baseY: 0, stickX: 0, stickY: 0, dx: 0, dy: 0, radius: 50, lastDir: null, triggerReset: true };
-    var keys = { w:false, a:false, s:false, d:false, Shift:false, Space:false, ArrowUp:false, ArrowDown:false, ArrowLeft:false, ArrowRight:false };
-
-    // --- Audio Init ---
-    let soundCtx; let soundEnabled = true;
-    try { const AC = window.AudioContext || window.webkitAudioContext; soundCtx = new AC(); } 
-    catch(e) { soundEnabled = false; soundCtx = { state: 'suspended', resume:()=>{}, createOscillator:()=>({connect:()=>{},start:()=>{},stop:()=>{},type:'',frequency:{setValueAtTime:()=>{}}}), createGain:()=>({gain:{setValueAtTime:()=>{},exponentialRampToValueAtTime:()=>{}},connect:()=>{}}), destination:{}, currentTime:0, createBuffer:()=>{return{getChannelData:()=>{return[]}}}, createBufferSource:()=>{return{connect:()=>{},start:()=>{}}}, createBiquadFilter:()=>{return{connect:()=>{},frequency:{value:0}}} }; }
-
-    // --- Music System ---
-    const Music = {
-        timer: null,
-        noteIndex: 0,
-        currentTrack: null,
-        isPlaying: false,
-        
-        tracks: {
-            race: {
-                tempo: 120,
-                // Simple fast sequence
-                notes: [
-                    {f:220,d:0.15}, {f:0,d:0.05}, {f:220,d:0.15}, {f:0,d:0.05}, {f:293,d:0.3}, // A3 A3 D4
-                    {f:220,d:0.15}, {f:0,d:0.05}, {f:220,d:0.15}, {f:0,d:0.05}, {f:196,d:0.3}, // A3 A3 G3
-                    {f:220,d:0.15}, {f:261,d:0.15}, {f:293,d:0.15}, {f:329,d:0.15}, {f:392,d:0.4}, // Scale
-                    {f:0,d:0.2}
-                ],
-                type: 'sawtooth'
-            },
-            dressage: {
-                tempo: 600,
-                // Waltz-like simple melody
-                notes: [
-                    {f:392,d:0.4}, {f:523,d:0.4}, {f:659,d:0.4}, // G4 C5 E5
-                    {f:587,d:0.4}, {f:523,d:0.4}, {f:493,d:0.4}, // D5 C5 B4
-                    {f:392,d:0.4}, {f:329,d:0.4}, {f:392,d:0.4}, // G4 E4 G4
-                    {f:523,d:0.8}, {f:0,d:0.4}
-                ],
-                type: 'triangle'
-            }
-        },
-
-        play: (trackName) => {
-            if(!soundEnabled) return;
-            Music.stop();
-            const track = Music.tracks[trackName];
-            if(!track) return;
-            
-            Music.currentTrack = track;
-            Music.isPlaying = true;
-            Music.noteIndex = 0;
-            Music.tick();
-        },
-
-        tick: () => {
-            if(!Music.isPlaying || !Music.currentTrack) return;
-            const note = Music.currentTrack.notes[Music.noteIndex];
-            
-            if(note.f > 0) {
-                try {
-                    const o = soundCtx.createOscillator();
-                    const g = soundCtx.createGain();
-                    o.type = Music.currentTrack.type || 'sine';
-                    o.frequency.setValueAtTime(note.f, soundCtx.currentTime);
-                    g.gain.setValueAtTime(0.05, soundCtx.currentTime);
-                    g.gain.exponentialRampToValueAtTime(0.001, soundCtx.currentTime + note.d);
-                    o.connect(g);
-                    g.connect(soundCtx.destination);
-                    o.start();
-                    o.stop(soundCtx.currentTime + note.d);
-                } catch(e){}
-            }
-            
-            Music.noteIndex = (Music.noteIndex + 1) % Music.currentTrack.notes.length;
-            Music.timer = setTimeout(Music.tick, note.d * 1000 * (600/Music.currentTrack.tempo)); // Adjust speed based on tempo
-        },
-
-        stop: () => {
-            Music.isPlaying = false;
-            if(Music.timer) clearTimeout(Music.timer);
-        }
+    var joy = { 
+        active: false, 
+        touchId: null, 
+        baseX: 110, 
+        baseY: 0, 
+        stickX: 0, 
+        stickY: 0, 
+        dx: 0, 
+        dy: 0, 
+        radius: 50, 
+        lastDir: null, 
+        triggerReset: true 
+    };
+    
+    var keys = { 
+        w: false, 
+        a: false, 
+        s: false, 
+        d: false, 
+        Shift: false, 
+        Space: false, 
+        ArrowUp: false, 
+        ArrowDown: false, 
+        ArrowLeft: false, 
+        ArrowRight: false 
     };
 
-    function toggleSound() {
-        soundEnabled = !soundEnabled;
-        document.getElementById('sound-btn').innerText = soundEnabled ? "🔊" : "🔇";
-        if(soundEnabled && soundCtx.state === 'suspended') soundCtx.resume();
-        if(!soundEnabled) Music.stop();
+    // --- Audio Init ---
+    let soundCtx; 
+    let soundEnabled = true;
+    try { 
+        const AC = window.AudioContext || window.webkitAudioContext; 
+        soundCtx = new AC(); 
+    } catch(e) { 
+        soundEnabled = false; 
+        soundCtx = { 
+            state: 'suspended', resume: function() {}, 
+            createOscillator: function() { return { connect: function() {}, start: function() {}, stop: function() {}, type: '', frequency: { setValueAtTime: function() {} } }; },
+            createGain: function() { return { gain: { setValueAtTime: function() {}, exponentialRampToValueAtTime: function() {} }, connect: function() {} }; },
+            destination: {}, currentTime: 0,
+            createBuffer: function() { return { getChannelData: function() { return []; } }; },
+            createBufferSource: function() { return { connect: function() {}, start: function() {} }; },
+            createBiquadFilter: function() { return { connect: function() {}, frequency: { value: 0 } }; }
+        }; 
     }
+
+    const Music = {
+        timer: null, noteIndex: 0, currentTrack: null, isPlaying: false,
+        tracks: {
+            race: { tempo: 120, notes: [{f:220,d:0.15}, {f:0,d:0.05}, {f:220,d:0.15}, {f:0,d:0.05}, {f:293,d:0.3}, {f:220,d:0.15}, {f:0,d:0.05}, {f:220,d:0.15}, {f:0,d:0.05}, {f:196,d:0.3}, {f:220,d:0.15}, {f:261,d:0.15}, {f:293,d:0.15}, {f:329,d:0.15}, {f:392,d:0.4}, {f:0,d:0.2}], type: 'sawtooth' },
+            dressage: { tempo: 600, notes: [{f:392,d:0.4}, {f:523,d:0.4}, {f:659,d:0.4}, {f:587,d:0.4}, {f:523,d:0.4}, {f:493,d:0.4}, {f:392,d:0.4}, {f:329,d:0.4}, {f:392,d:0.4}, {f:523,d:0.8}, {f:0,d:0.4}], type: 'triangle' }
+        },
+        play: (trackName) => { if(!soundEnabled) return; Music.stop(); const track = Music.tracks[trackName]; if(!track) return; Music.currentTrack = track; Music.isPlaying = true; Music.noteIndex = 0; Music.tick(); },
+        tick: () => { if(!Music.isPlaying || !Music.currentTrack) return; const note = Music.currentTrack.notes[Music.noteIndex]; if(note.f > 0) { try { const o = soundCtx.createOscillator(); const g = soundCtx.createGain(); o.type = Music.currentTrack.type || 'sine'; o.frequency.setValueAtTime(note.f, soundCtx.currentTime); g.gain.setValueAtTime(0.05, soundCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, soundCtx.currentTime + note.d); o.connect(g); g.connect(soundCtx.destination); o.start(); o.stop(soundCtx.currentTime + note.d); } catch(e){} } Music.noteIndex = (Music.noteIndex + 1) % Music.currentTrack.notes.length; Music.timer = setTimeout(Music.tick, note.d * 1000 * (600/Music.currentTrack.tempo)); },
+        stop: () => { Music.isPlaying = false; if(Music.timer) clearTimeout(Music.timer); }
+    };
+
+    function toggleSound() { soundEnabled = !soundEnabled; document.getElementById('sound-btn').innerText = soundEnabled ? "🔊" : "🔇"; if(soundEnabled && soundCtx.state === 'suspended') soundCtx.resume(); if(!soundEnabled) Music.stop(); }
     
     const Sound = {
-        playTone: (f, t, d, v=0.1) => { if(!soundEnabled) return; try { const o=soundCtx.createOscillator(), g=soundCtx.createGain(); o.type=t; o.frequency.setValueAtTime(f, soundCtx.currentTime); g.gain.setValueAtTime(v, soundCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, soundCtx.currentTime+d); o.connect(g); g.connect(soundCtx.destination); o.start(); o.stop(soundCtx.currentTime+d); } catch(e){} },
-        playNoise: (d) => { if(!soundEnabled) return; try { const b=soundCtx.createBuffer(1, soundCtx.sampleRate*d, soundCtx.sampleRate), dt=b.getChannelData(0); for(let i=0;i<b.length;i++) dt[i]=Math.random()*2-1; const n=soundCtx.createBufferSource(); n.buffer=b; const g=soundCtx.createGain(); g.gain.setValueAtTime(0.05, soundCtx.currentTime); const f=soundCtx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=150; n.connect(f); f.connect(g); g.connect(soundCtx.destination); n.start(); } catch(e){} },
-        playJump: () => Sound.playTone(300, 'sine', 0.3, 0.2),
-        playPop: () => Sound.playTone(400, 'triangle', 0.1, 0.1),
+        playTone: (f, t, d, v=0.1) => { if(!soundEnabled) return; try { const o = soundCtx.createOscillator(); const g = soundCtx.createGain(); o.type = t; o.frequency.setValueAtTime(f, soundCtx.currentTime); g.gain.setValueAtTime(v, soundCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, soundCtx.currentTime+d); o.connect(g); g.connect(soundCtx.destination); o.start(); o.stop(soundCtx.currentTime+d); } catch(e){} },
+        playNoise: (d) => { if(!soundEnabled) return; try { const b = soundCtx.createBuffer(1, soundCtx.sampleRate*d, soundCtx.sampleRate); const dt = b.getChannelData(0); for(let i=0; i<b.length; i++) dt[i] = Math.random() * 2 - 1; const n = soundCtx.createBufferSource(); n.buffer = b; const g = soundCtx.createGain(); g.gain.setValueAtTime(0.05, soundCtx.currentTime); const f = soundCtx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 150; n.connect(f); f.connect(g); g.connect(soundCtx.destination); n.start(); } catch(e){} },
+        playJump: () => { Sound.playTone(300, 'sine', 0.3, 0.2); },
+        playPop: () => { Sound.playTone(400, 'triangle', 0.1, 0.1); },
         playSuccess: () => { Sound.playTone(523, 'sine', 0.2); setTimeout(()=>Sound.playTone(659, 'sine', 0.4), 100); },
         playFail: () => { Sound.playTone(150, 'sawtooth', 0.3, 0.2); },
         playCluck: () => { if(!soundEnabled) return; Sound.playTone(450, 'triangle', 0.08, 0.05); setTimeout(()=>Sound.playTone(350, 'triangle', 0.08, 0.05), 80); },
         playSleep: () => { Sound.playTone(300, 'sine', 0.5, 0.1); setTimeout(()=>Sound.playTone(200, 'sine', 0.5, 0.1), 300); },
         playRustle: () => { if(!soundEnabled) return; Sound.playNoise(0.2); },
-        playSlide: () => Sound.playTone(600, 'sine', 0.5, 0.02),
-        playSplash: () => Sound.playNoise(0.3)
+        playSlide: () => { Sound.playTone(600, 'sine', 0.5, 0.02); },
+        playSplash: () => { Sound.playNoise(0.3); },
+        playMeow: () => { if(!soundEnabled) return; Sound.playTone(800, 'sine', 0.2, 0.05); setTimeout(()=>Sound.playTone(600, 'sine', 0.3, 0.05), 150); }
     };
 
-    // --- Game Setup ---
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     canvas.setAttribute('tabindex', '0'); 
-
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-    const WORLD_W = 2500, WORLD_H = 2000;
-    const MODES = { WORLD: 0, RACE: 1, JUMP: 2, DRESSAGE: 3 };
-
+    
+    // --- UPDATED MAP SIZE ---
+    const WORLD_W = 4000, WORLD_H = 2500;
+    const MODES = { WORLD: 0, RACE: 1, JUMP: 2, DRESSAGE: 3, FOAL_SCHOOL: 4 };
     const itemTypes = { apple: { name: "Apfel", emoji: "🍎", color: "#ff4d4d", plantable: true }, carrot: { name: "Möhre", emoji: "🥕", color: "#ffa500", plantable: true }, water: { name: "Wasser", emoji: "💧", color: "#3498db" }, brush: { name: "Bürste", emoji: "🧹", color: "#95a5a6" }, hay: { name: "Heu", emoji: "🌾", color: "#f1c40f" } };
-    const seasons = [{name:"Frühling",bg:"#7BC043",treeColor:"#2ecc71",riverColor:"#4fc3f7"},{name:"Sommer",bg:"#6ab04c",treeColor:"#27ae60",riverColor:"#29b6f6"},{name:"Herbst",bg:"#e1b12c",treeColor:"#e67e22",riverColor:"#81d4fa"},{name:"Winter",bg:"#dfe6e9",treeColor:"#b2bec3",riverColor:"#b3e5fc"}];
-    const shopItems = [{ id: 'flower_red', name: 'Rote Blumen', cost: 2, type: 'deco', emoji: '🌹' }, { id: 'flower_blue', name: 'Blaue Blumen', cost: 2, type: 'deco', emoji: '💠' }, { id: 'fountain', name: 'Brunnen', cost: 5, type: 'deco', emoji: '⛲' }, { id: 'bench', name: 'Bank', cost: 3, type: 'deco', emoji: '🪑' }];
+    const seasons = [ {name:"Frühling",bg:"#7BC043",treeColor:"#2ecc71",riverColor:"#4fc3f7"}, {name:"Sommer",bg:"#6ab04c",treeColor:"#27ae60",riverColor:"#29b6f6"}, {name:"Herbst",bg:"#e1b12c",treeColor:"#e67e22",riverColor:"#81d4fa"}, {name:"Winter",bg:"#dfe6e9",treeColor:"#b2bec3",riverColor:"#b3e5fc"} ];
+    const shopItems = [ { id: 'flower_red', name: 'Rote Blumen', cost: 2, type: 'deco', emoji: '🌹' }, { id: 'flower_blue', name: 'Blaue Blumen', cost: 2, type: 'deco', emoji: '💠' }, { id: 'fountain', name: 'Brunnen', cost: 5, type: 'deco', emoji: '⛲' }, { id: 'bench', name: 'Bank', cost: 3, type: 'deco', emoji: '🪑' } ];
 
     var gameState = {
-        mode: MODES.WORLD,
-        running: false, level: 0, stars: 0,
-        time: 0.25, dayDuration: 12000, 
-        weather: 'sunny', weatherTimer: 0, seasonIndex: 0,
-        entities: { horses: [], items: [], decorations: [], dogs: [], ducks: [], chickens: [], leafPiles: [] },
-        terrain: { riverPoints: [], fields: [], trees: [], obstacles: [], fences: [], house: null, beds: [] },
-        inventory: null, particles: [], footprints: [],
-        camX: 0, camY: 0, zoom: 1.0,
-        player: { 
-            x: 600, y: 600, z: 0, vz: 0, vx: 0, vy: 0, speed: 6, maxStamina: 100, stamina: 100, 
-            color: '#654321', maneColor: '#2c2c2c', flip: false, animFrame: 0,
-            outfit: { saddlePad: '#ffffff', ribbon: null }
-        },
-        quest: { horse: null },
-        grooming: { active: false, progress: 0, targetHorse: null },
-        training: { active: false, targetFoal: null, menuOpen: false },
-        sleeping: false,
-        
-        // Minigame Data
-        minigame: { active: false, score: 0, timer: 0, objects: [], opponents: [], state: 'warmup', countdown: 3, dressageOffset: {x:0, y:0}, feedbackText: null }
+        mode: MODES.WORLD, running: false, level: 0, stars: 0, time: 0.25, dayDuration: 12000, weather: 'sunny', weatherTimer: 0, seasonIndex: 0,
+        entities: { horses: [], items: [], decorations: [], dogs: [], ducks: [], chickens: [], leafPiles: [], cats: [], mice: [] },
+        terrain: { riverPoints: [], fields: [], trees: [], obstacles: [], fences: [], house: null, beds: [], shells: [], crystals: [] },
+        inventory: null, particles: [], footprints: [], camX: 0, camY: 0, zoom: 1.0,
+        player: { x: 600, y: 600, z: 0, vz: 0, vx: 0, vy: 0, speed: 6, maxStamina: 100, stamina: 100, color: '#654321', maneColor: '#2c2c2c', flip: false, animFrame: 0, outfit: { saddlePad: '#ffffff', ribbon: null } },
+        quest: { horse: null }, grooming: { active: false, progress: 0, targetHorse: null }, training: { active: false, targetFoal: null, menuOpen: false }, sleeping: false,
+        minigame: { active: false, score: 0, timer: 0, objects: [], opponents: [], state: 'warmup', countdown: 3, dressageOffset: {x:0, y:0}, feedbackText: null, foalSchool: { trickWanted: null, trickTimer: 0, foal: null } }
     };
 
     function initUI() {
         const hint = document.getElementById('controls-hint');
         const mobActions = document.getElementById('mobile-actions');
         const joystickElement = document.getElementById('joystick-touch-zone');
-        
-        if (!isTouchDevice) {
-            if(joystickElement) joystickElement.style.display = 'none';
-            mobActions.style.display = 'none';
-            hint.innerHTML = "<b>WASD</b> Bewegen | <b>Shift</b> Sprinten<br><b>Leertaste</b> Springen | <b>Q</b> oder <b>X</b> Ablegen";
-        } else {
-            mobActions.style.display = 'flex';
-            hint.innerHTML = "Joystick zum Bewegen<br>Buttons für Aktionen";
-        }
-
+        if (!isTouchDevice) { if(joystickElement) joystickElement.style.display = 'none'; mobActions.style.display = 'none'; hint.innerHTML = "<b>WASD</b> Bewegen | <b>Shift</b> Sprinten<br><b>Leertaste</b> Springen | <b>Q</b> oder <b>X</b> Ablegen"; } else { mobActions.style.display = 'flex'; hint.innerHTML = "Joystick zum Bewegen<br>Buttons für Aktionen"; }
         if(joystickElement) {
-            const updateJoy = (t) => {
-                let dx = t.clientX - joy.baseX, dy = t.clientY - joy.baseY; let dist = Math.hypot(dx,dy);
-                if(dist>joy.radius) { let r=joy.radius/dist; dx*=r; dy*=r; }
-                joy.stickX = joy.baseX+dx; joy.stickY = joy.baseY+dy; joy.dx = dx/joy.radius; joy.dy = dy/joy.radius;
-            };
+            const updateJoy = (t) => { let dx = t.clientX - joy.baseX; let dy = t.clientY - joy.baseY; let dist = Math.hypot(dx,dy); if(dist>joy.radius) { let r=joy.radius/dist; dx*=r; dy*=r; } joy.stickX = joy.baseX+dx; joy.stickY = joy.baseY+dy; joy.dx = dx/joy.radius; joy.dy = dy/joy.radius; };
             joystickElement.addEventListener('touchstart', (e) => { e.preventDefault(); joy.active=true; joy.touchId=e.changedTouches[0].identifier; updateJoy(e.changedTouches[0]); }, {passive: false});
-            joystickElement.addEventListener('touchmove', (e) => { e.preventDefault(); if (joy.active) for (let t of e.changedTouches) if (t.identifier === joy.touchId) updateJoy(t); }, {passive: false});
-            const end = (e) => { for (let t of e.changedTouches) if (t.identifier === joy.touchId) { joy.active=false; joy.stickX=joy.baseX; joy.stickY=joy.baseY; joy.dx=0; joy.dy=0; joy.triggerReset=true; } };
+            joystickElement.addEventListener('touchmove', (e) => { e.preventDefault(); if (joy.active) { for (let t of e.changedTouches) { if (t.identifier === joy.touchId) updateJoy(t); } } }, {passive: false});
+            const end = (e) => { for (let t of e.changedTouches) { if (t.identifier === joy.touchId) { joy.active=false; joy.stickX=joy.baseX; joy.stickY=joy.baseY; joy.dx=0; joy.dy=0; joy.triggerReset=true; } } };
             joystickElement.addEventListener('touchend', end); joystickElement.addEventListener('touchcancel', end); joystickElement.addEventListener('touchleave', end);
         }
         initShop();
-        
-        // Init Firebase
         if(typeof __firebase_config !== 'undefined') {
-            try {
-                const firebaseConfig = JSON.parse(__firebase_config);
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                
-                // --- FIX: Reliable Auth Listener ---
-                onAuthStateChanged(auth, (u) => {
-                    user = u;
-                    console.log("Auth Status:", user ? "Angemeldet" : "Abgemeldet");
-                });
-                
-                const initAuth = async () => {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch(err) {
-                        console.error("Auth Error:", err);
-                    }
-                };
-                initAuth();
-            } catch(e) { console.warn("Firebase Init Error", e); }
+            try { const firebaseConfig = JSON.parse(__firebase_config); const app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); onAuthStateChanged(auth, (u) => { user = u; }); const initAuth = async () => { try { if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { await signInWithCustomToken(auth, __initial_auth_token); } else { await signInAnonymously(auth); } } catch(err) { console.error("Auth Error:", err); } }; initAuth(); } catch(e) {}
         }
-        
-        // --- CLICK HANDLER FOR TENT ---
         canvas.addEventListener('click', (e) => {
             if (!gameState.running || gameState.mode !== MODES.WORLD) return;
-            const rect = canvas.getBoundingClientRect();
-            // Get screen click
-            const clickX = e.clientX - rect.left;
-            const clickY = e.clientY - rect.top;
-            
-            // Convert to World Coordinates
-            const worldX = ((clickX - canvas.width/2) / gameState.zoom) + canvas.width/2 + gameState.camX;
-            const worldY = ((clickY - canvas.height/2) / gameState.zoom) + canvas.height/2 + gameState.camY;
-            
+            const rect = canvas.getBoundingClientRect(); const clickX = e.clientX - rect.left; const clickY = e.clientY - rect.top;
+            const worldX = ((clickX - canvas.width/2) / gameState.zoom) + canvas.width/2 + gameState.camX; const worldY = ((clickY - canvas.height/2) / gameState.zoom) + canvas.height/2 + gameState.camY;
             const tent = gameState.entities.decorations.find(d => d.type === 'tournament');
-            if(tent) {
-                // Check distance (Tent is around 550, 450)
-                if(Math.hypot(worldX - tent.x, worldY - tent.y) < 120) {
-                    openTournamentMenu();
-                }
-            }
+            if(tent && Math.hypot(worldX - tent.x, worldY - tent.y) < 120) openTournamentMenu();
         });
     }
 
     function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; joy.baseX = 30 + 160/2; joy.baseY = canvas.height - (30 + 160/2); if(!joy.active) { joy.stickX = joy.baseX; joy.stickY = joy.baseY; } }
-
-    function startGame() {
-        document.getElementById('level-screen').style.display = 'none';
-        if(soundCtx && soundCtx.state === 'suspended') soundCtx.resume();
-        generateWorld();
-        gameState.running = true;
-        window.focus(); canvas.focus();
-        loop();
-    }
-    
+    function startGame() { document.getElementById('level-screen').style.display = 'none'; if(soundCtx && soundCtx.state === 'suspended') soundCtx.resume(); generateWorld(); gameState.running = true; window.focus(); canvas.focus(); loop(); }
     document.addEventListener('mousedown', (e) => { if(gameState.running && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') { canvas.focus(); window.focus(); } });
 
     function generateWorld() {
-        gameState.mode = MODES.WORLD;
-        gameState.time = 0.25; 
-        // Reset Player on Safe Spot
-        gameState.player.x = 600; gameState.player.y = 600;
-        gameState.player.speed = 6; // RESET SPEED FIX
-        
+        gameState.mode = MODES.WORLD; gameState.time = 0.25; gameState.player.x = 600; gameState.player.y = 600; gameState.player.speed = 6; 
         gameState.entities.horses = []; gameState.entities.items = []; gameState.entities.leafPiles = [];
         gameState.entities.dogs = [{x: 1300, y: 1050, vx:0, vy:0, flip: false, anim:0, state:'follow', timer: 500, tx:0, ty:0}];
         gameState.entities.ducks = []; gameState.entities.chickens = [];
-        gameState.terrain.riverPoints = []; gameState.terrain.trees = []; gameState.terrain.obstacles = []; gameState.terrain.fences = []; gameState.terrain.beds = [];
+        // NEW ENTITIES
+        gameState.entities.cats = [{x: 350, y: 350, vx:0, vy:0, flip: false, anim:0, state:'idle', timer: 100, target: null}];
+        gameState.entities.mice = [];
+        for(let i=0; i<8; i++) gameState.entities.mice.push({x: 500+Math.random()*1000, y: 500+Math.random()*1000, vx:0, vy:0, timer:0});
+
+        gameState.terrain.riverPoints = []; gameState.terrain.trees = []; gameState.terrain.obstacles = []; gameState.terrain.fences = []; gameState.terrain.beds = []; gameState.terrain.shells = []; gameState.terrain.crystals = [];
 
         // River
-        for(let x=0; x<=WORLD_W; x+=40) gameState.terrain.riverPoints.push({x:x, y: (WORLD_H/2) + Math.sin(x/400)*300});
+        for(let x=0; x<=WORLD_W; x+=40) gameState.terrain.riverPoints.push({x:x, y: (1000) + Math.sin(x/400)*300});
         
         // Fences
-        for(let x=0; x<=WORLD_W; x+=80) { gameState.terrain.fences.push({x:x, y:5}); gameState.terrain.fences.push({x:x, y:WORLD_H-5}); }
-        for(let y=0; y<=WORLD_H; y+=60) { gameState.terrain.fences.push({x:5, y:y}); gameState.terrain.fences.push({x:WORLD_W-5, y:y}); }
+        for(let x=0; x<=2500; x+=80) { gameState.terrain.fences.push({x:x, y:5}); gameState.terrain.fences.push({x:x, y:2000-5}); }
+        for(let y=0; y<=2000; y+=60) { gameState.terrain.fences.push({x:5, y:y}); if(y<1000 || y>1400) gameState.terrain.fences.push({x:2500-5, y:y}); }
 
         // House & Beds & Tournament Tent
         gameState.terrain.house = {x: 300, y: 300, w: 160, h: 120};
-        gameState.entities.decorations.push({x: 550, y: 450, emoji: '🎪', type: 'tournament'}); // TENT ADDED
+        gameState.entities.decorations.push({x: 1000, y: 400, emoji: '🎪', type: 'tournament'});
         for(let i=0; i<3; i++) gameState.terrain.beds.push({x: 500 + i*70, y: 350, w: 60, h: 60, plant: null, growth: 0, watered: false});
 
-        // Trees (Safe Zone around 600,600)
+        // Trees
         for(let i=0; i<150; i++) {
-            let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H;
-            if(Math.hypot(x - 600, y - 600) < 300) continue; // Safe zone
-            if(!isNearRiver(x,y,80) && !(x > 250 && x < 800 && y > 250 && y < 500)) {
+            let x = Math.random()*2500, y = Math.random()*2000;
+            if(Math.hypot(x - 600, y - 600) < 300) continue; 
+            if(!isNearRiver(x,y,80)) {
                 let apples = []; if(Math.random() < 0.3) apples = [{ox:-15,oy:-15}, {ox:15,oy:-5}, {ox:0,oy:-25}, {ox:-10,oy:5}];
                 gameState.terrain.trees.push({x:x, y:y, size: 60+Math.random()*40, apples: apples});
             }
         }
         
+        // BEACH GENERATION (Right side)
+        for(let i=0; i<40; i++) {
+            let x = 2800 + Math.random()*1000; let y = Math.random()*2000;
+            gameState.terrain.shells.push({x:x, y:y, type: Math.random()>0.5 ? '🐚' : '⭐'});
+        }
+
+        // CRYSTAL FOREST GENERATION (Bottom side)
+        for(let i=0; i<30; i++) {
+            let x = 100 + Math.random()*3800; let y = 2100 + Math.random()*350;
+            gameState.terrain.crystals.push({x:x, y:y, color: Math.random()>0.5 ? '#9b59b6' : '#3498db'});
+            gameState.terrain.trees.push({x:x+20, y:y+20, size: 80, apples: [], type: 'crystal'});
+        }
+
         // Animals
         for(let i=0; i<5; i++) { let pt = gameState.terrain.riverPoints[Math.floor(Math.random()*gameState.terrain.riverPoints.length)]; gameState.entities.ducks.push({x: pt.x, y: pt.y, offset: Math.random()*100}); }
         for(let i=0; i<10; i++) { let cx = 1000 + (Math.random()-0.5)*500; let cy = 1000 + (Math.random()-0.5)*500; gameState.entities.chickens.push({x: cx, y: cy, vx: 0, vy: 0, state: 'idle', timer: 0, panic: 0}); }
 
         const colors = ['#3e2723', '#795548', '#a1887f', '#d7ccc8', '#eeeeee'];
         for(let i=0; i<6; i++) {
-            let px = Math.random()*WORLD_W, py = Math.random()*WORLD_H; px = Math.max(200, Math.min(WORLD_W-200, px)); py = Math.max(200, Math.min(WORLD_H-200, py));
+            let px = Math.random()*2000, py = Math.random()*1500; px = Math.max(200, Math.min(2000, px)); py = Math.max(200, Math.min(1500, py));
             if(isNearRiver(px,py,100)) continue;
             let horse = { id: i, x: px, y: py, color: colors[i%colors.length], flip: Math.random()>0.5, state: 'idle', timer: 0, tx: px, ty: py, anim: 0, want: Object.values(itemTypes)[Math.floor(Math.random()*5)], satisfied: false };
             gameState.entities.horses.push(horse);
@@ -513,12 +421,11 @@
         const needyHorse = gameState.entities.horses.find(h => !h.isFoal && !h.satisfied);
         if(needyHorse) gameState.quest.horse = needyHorse;
         spawnItems();
-        updateSeason(0); 
-        updateUI(); updateQuestUI(); 
+        updateSeason(0); updateUI(); updateQuestUI(); 
     }
 
     function spawnItems() {
-        const spawn = (t, n) => { for(let i=0; i<n; i++) { let x = Math.random()*WORLD_W, y = Math.random()*WORLD_H; if(!isNearRiver(x,y,50)) gameState.entities.items.push({x,y,type:t}); } }
+        const spawn = (t, n) => { for(let i=0; i<n; i++) { let x = Math.random()*2400, y = Math.random()*1900; if(!isNearRiver(x,y,50)) gameState.entities.items.push({x,y,type:t}); } }
         spawn(itemTypes.water, 5); spawn(itemTypes.carrot, 5); spawn(itemTypes.apple, 5); spawn(itemTypes.hay, 5); spawn(itemTypes.brush, 4);
     }
     
@@ -531,554 +438,201 @@
 
     function loop() {
         if(!gameState.running) return;
-
         if(gameState.mode === MODES.WORLD) {
             updateWorld();
             let tx = gameState.player.x - canvas.width/2; let ty = gameState.player.y - canvas.height/2;
             gameState.camX += (tx - gameState.camX) * 0.1; gameState.camY += (ty - gameState.camY) * 0.1;
         } else {
-            // Minigame Updates
             if(gameState.mode === MODES.RACE) updateRace();
             else if(gameState.mode === MODES.JUMP) updateJump();
             else if(gameState.mode === MODES.DRESSAGE) updateDressage();
-            // Cam for minigames
+            else if(gameState.mode === MODES.FOAL_SCHOOL) updateFoalSchool();
             let tx = gameState.player.x - canvas.width/2; let ty = gameState.player.y - canvas.height/2;
             if(gameState.mode === MODES.DRESSAGE) { tx = 0; ty = 0; }
             gameState.camX += (tx - gameState.camX) * 0.1; gameState.camY += (ty - gameState.camY) * 0.1;
         }
-
         draw();
         requestAnimationFrame(loop);
     }
 
     function updateWorld() {
         if(!gameState.sleeping) {
-            gameState.time += 1/gameState.dayDuration;
-            if(gameState.time >= 1) gameState.time = 0;
-            
-            gameState.weatherTimer++;
-            if(gameState.weatherTimer > 3000) {
-                gameState.weatherTimer = 0;
-                let nextS = (gameState.seasonIndex + 1) % 4; updateSeason(nextS);
-                const r = Math.random();
-                if(r < 0.6) gameState.weather = 'sunny'; else if(r < 0.9) gameState.weather = 'rain'; else gameState.weather = 'snow';
-            }
+            gameState.time += 1/gameState.dayDuration; if(gameState.time >= 1) gameState.time = 0;
+            gameState.weatherTimer++; if(gameState.weatherTimer > 3000) { gameState.weatherTimer = 0; let nextS = (gameState.seasonIndex + 1) % 4; updateSeason(nextS); const r = Math.random(); if(r < 0.6) gameState.weather = 'sunny'; else if(r < 0.9) gameState.weather = 'rain'; else gameState.weather = 'snow'; }
 
             handlePlayerMovement();
-            updateHorses(); updateDog(); updateDucks(); updateChickens(); updateGarden();
+            updateHorses(); updateDog(); updateDucks(); updateChickens(); updateGarden(); updateCat(); updateMice();
             checkCollisions(); checkHouseSleep();
             
-            // Fade Footprints logic
-            for (let i = gameState.footprints.length - 1; i >= 0; i--) {
-                gameState.footprints[i].age -= 0.5; // Fade speed
-                if (gameState.footprints[i].age <= 0) gameState.footprints.splice(i, 1);
-            }
+            for (let i = gameState.footprints.length - 1; i >= 0; i--) { gameState.footprints[i].age -= 0.5; if (gameState.footprints[i].age <= 0) gameState.footprints.splice(i, 1); }
             
-            // Tournament Tent Check
-            let nearTent = Math.hypot(gameState.player.x - 550, gameState.player.y - 450) < 80;
-            const hint = document.getElementById('tourney-hint');
-            if(nearTent) { hint.style.display='block'; if(keys.Space) openTournamentMenu(); } else { hint.style.display='none'; }
+            const tent = gameState.entities.decorations.find(d => d.type === 'tournament');
+            let nearTent = false; if (tent) nearTent = Math.hypot(gameState.player.x - tent.x, gameState.player.y - tent.y) < 100;
+            const hint = document.getElementById('tourney-hint'); if(nearTent) { hint.style.display='block'; if(keys.Space) openTournamentMenu(); } else { hint.style.display='none'; }
 
             if(seasons[gameState.seasonIndex].name === 'Herbst') {
                 const p = gameState.player;
                 for(let i=gameState.entities.leafPiles.length-1; i>=0; i--) {
                     let lp = gameState.entities.leafPiles[i];
-                    if(Math.hypot(p.x - lp.x, p.y - lp.y) < 30) {
-                        Sound.playRustle(); createParticles(lp.x, lp.y, "🍂", 3);
-                        gameState.entities.leafPiles.splice(i, 1);
-                        if(Math.random()>0.5) gameState.entities.leafPiles.push({x: Math.random()*WORLD_W, y: Math.random()*WORLD_H});
-                    }
-                }
-            }
-        }
-    }
-
-    function handlePlayerMovement() {
-        const p = gameState.player;
-        let dx = 0, dy = 0;
-        
-        if(joy.active) { 
-            // Dampen joystick speed
-            dx = joy.dx * 0.6; 
-            dy = joy.dy * 0.6; 
-        } 
-        else {
-            if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1; 
-            if(keys.a || keys.ArrowLeft) dx = -1; if(keys.d || keys.ArrowRight) dx = 1; 
-            if (dx !== 0 || dy !== 0) { let length = Math.hypot(dx, dy); dx /= length; dy /= length; dy /= length; }
-        }
-
-        let speed = p.speed;
-        let isWinter = seasons[gameState.seasonIndex].name === 'Winter';
-        let onRiver = isNearRiver(p.x, p.y, 60);
-
-        if(onRiver) {
-            if(isWinter) { p.vx = p.vx * 0.99 + dx * 0.05; p.vy = p.vy * 0.99 + dy * 0.05; if(Math.hypot(p.vx, p.vy) > 0.5 && Math.random() < 0.05) Sound.playSlide(); } 
-            else { speed *= 0.3; if(Math.random() < 0.05 && (dx!=0 || dy!=0)) { Sound.playSplash(); createParticles(p.x, p.y, "💧", 1); } }
-        } else {
-            p.vx = dx * speed; p.vy = dy * speed;
-        }
-
-        let isSprinting = (keys.Shift || (joy.active && Math.hypot(joy.dx,joy.dy) > 0.9));
-        if(isSprinting && p.stamina > 0 && (dx!=0 || dy!=0)) { 
-            if(onRiver && isWinter) { p.vx*=1.02; p.vy*=1.02; } else { p.vx *= 1.6; p.vy *= 1.6; } p.stamina -= 0.5; 
-        } else { if(p.stamina < p.maxStamina) p.stamina += 0.2; }
-
-        if(p.z > 0 || p.vz !== 0) { p.z += p.vz; p.vz -= 0.8; if(p.z <= 0) { p.z = 0; p.vz = 0; Sound.playNoise(0.1); } }
-
-        let prevX = p.x; let prevY = p.y;
-        p.x += p.vx; p.y += p.vy;
-        
-        if(Math.hypot(p.vx, p.vy) > 0.1) {
-            p.animFrame += Math.hypot(p.vx, p.vy) * 0.05; p.flip = p.vx < 0;
-            if(!onRiver && Math.floor(p.animFrame*10) % 5 === 0 && p.z === 0) gameState.footprints.push({x: p.x, y: p.y, age: 100});
-            if(!onRiver && Math.floor(p.animFrame*5) % 10 === 0 && p.z === 0) Sound.playNoise(0.05);
-        } else { p.animFrame = 0; }
-
-        p.x = Math.max(50, Math.min(WORLD_W-50, p.x)); p.y = Math.max(50, Math.min(WORLD_H-50, p.y));
-
-        if(p.z < 10) {
-            for(let o of gameState.terrain.obstacles) {
-                if(p.x > o.x - 20 && p.x < o.x + o.w + 20 && p.y > o.y - 10 && p.y < o.y + o.h + 10) {
-                    p.x = prevX; p.y = prevY; p.vx = 0; p.vy = 0;
+                    if(Math.hypot(p.x - lp.x, p.y - lp.y) < 30) { Sound.playRustle(); createParticles(lp.x, lp.y, "🍂", 3); gameState.entities.leafPiles.splice(i, 1); if(Math.random()>0.5) gameState.entities.leafPiles.push({x: Math.random()*WORLD_W, y: Math.random()*WORLD_H}); }
                 }
             }
         }
     }
     
-    // --- Minigame Logic ---
-    function openTournamentMenu() { document.getElementById('tournament-screen').style.display = 'flex'; keys.Space = false; }
-    
-    function startMinigame(typeString) {
-        closeModals();
-        gameState.minigame.active = true;
-        
-        let mode = MODES.WORLD;
-        if(typeString === 'race') mode = MODES.RACE;
-        else if(typeString === 'jump') mode = MODES.JUMP;
-        else if(typeString === 'dressage') mode = MODES.DRESSAGE;
-        
-        gameState.mode = mode;
-        gameState.minigame.score = 0;
-        gameState.minigame.timer = 0; gameState.minigame.state = 'warmup'; gameState.minigame.countdown = 3;
-        
-        document.getElementById('minigame-hud').style.display = 'block'; 
-        document.getElementById('ui-layer').querySelector('.hud-left').style.display='none';
-        
-        // Hide hints AND Quest Box
-        document.querySelectorAll('.context-hint').forEach(el => el.style.display = 'none');
-        document.getElementById('quest-box').style.display = 'none';
-        
-        // --- MOBILE CONTROLS VISIBILITY ---
-        // Hide standard mobile actions in all minigames
-        document.getElementById('mobile-actions').style.display = 'none';
-
-        // Joystick visibility logic
-        let showJoystick = (isTouchDevice && (mode === MODES.WORLD || mode === MODES.RACE || mode === MODES.DRESSAGE));
-        document.getElementById('joystick-touch-zone').style.display = showJoystick ? 'block' : 'none';
-
-        document.getElementById('mobile-jump-only').style.display = (isTouchDevice && mode === MODES.JUMP) ? 'block' : 'none';
-        
-        if(isTouchDevice && mode === MODES.RACE) {
-            document.getElementById('mg-info').innerText = "Joystick: Lenken & Gas!";
-        } else if(isTouchDevice && mode === MODES.DRESSAGE) {
-            document.getElementById('mg-info').innerText = "Joystick schnippen!";
-        }
-
-        canvas.focus(); 
-
-        if(mode === MODES.RACE) setupRace();
-        else if(mode === MODES.JUMP) setupJump();
-        else if(mode === MODES.DRESSAGE) setupDressage();
-    }
-
-    function endMinigame(stars, msg) {
-        Music.stop(); 
-        gameState.minigame.state = 'end';
-        document.getElementById('result-screen').style.display = 'flex';
-        document.getElementById('result-text').innerText = msg;
-        document.getElementById('result-stars').innerText = stars;
-        gameState.stars += stars;
-        
-        document.getElementById('hs-input-group').style.display = 'block';
-        document.getElementById('player-name').value = localStorage.getItem('playerName') || '';
-        loadHighscores();
-    }
-    
-    // --- Highscore Logic ---
-    function loadHighscores() {
-        if(!db) { document.getElementById('highscore-list').innerText = "Highscores nur online verfügbar."; return; }
-        let modeName = gameState.mode === MODES.RACE ? 'race' : (gameState.mode === MODES.JUMP ? 'jump' : 'dressage');
-        
-        document.getElementById('highscore-list').innerHTML = "Lade...";
-        
-        try {
-            const q = collection(db, 'artifacts', appId, 'public', 'data', 'highscores');
-            onSnapshot(q, (snapshot) => {
-                const scores = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    if(data.mode === modeName) scores.push(data);
-                });
-                
-                scores.sort((a,b) => b.score - a.score);
-                const top5 = scores.slice(0,5);
-                
-                let html = "";
-                top5.forEach((s, i) => {
-                    html += `<div class="hs-entry"><span class="hs-rank">#${i+1}</span> <span>${s.name}</span> <span>${s.score}</span></div>`;
-                });
-                if(scores.length === 0) html = "Noch keine Highscores.";
-                document.getElementById('highscore-list').innerHTML = html;
-            }, (error) => {
-                 console.error("HS Error", error);
-                 document.getElementById('highscore-list').innerText = "Fehler beim Laden.";
-            });
-        } catch(e) {
-            console.error(e);
-        }
-    }
-    
-    function submitHighscore() {
-        // --- FIX: Robust User Check ---
-        if(!db) { alert("Keine Datenbank-Verbindung!"); return; }
-        
-        if(!user) { 
-            // Try to rescue user if global var is lost but auth persists
-            if(auth && auth.currentUser) user = auth.currentUser;
-            else { alert("Nicht angemeldet! Bitte Spiel neu laden."); return; }
-        }
-
-        const name = document.getElementById('player-name').value;
-        if(!name) { alert("Bitte Namen eingeben!"); return; }
-        
-        localStorage.setItem('playerName', name); 
-        let modeName = gameState.mode === MODES.RACE ? 'race' : (gameState.mode === MODES.JUMP ? 'jump' : 'dressage');
-        
-        document.getElementById('hs-input-group').style.display = 'none';
-        
-        addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'highscores'), {
-            name: name,
-            score: gameState.minigame.score,
-            mode: modeName,
-            timestamp: Date.now()
-        }).then(() => { 
-            // Success
-        }).catch(err => {
-            alert("Fehler beim Speichern: " + err.message);
-            document.getElementById('hs-input-group').style.display = 'block';
+    // Entity Updates
+    function updateHorses() {
+        gameState.entities.horses.forEach(h => {
+            if(h.isFoal && h.parent) {
+                let dist = Math.hypot(h.x - h.parent.x, h.y - h.parent.y);
+                if(dist > 60) { let angle = Math.atan2(h.parent.y - h.y, h.parent.x - h.x); h.x += Math.cos(angle) * 3; h.y += Math.sin(angle) * 3; h.flip = Math.cos(angle) < 0; h.anim += 0.2; } else { h.anim = 0; if(Math.random() < 0.01) h.flip = !h.flip; }
+                return;
+            }
+            if(h.state === 'idle') { h.timer++; if(h.timer > 100 + Math.random()*200) { h.state = 'walk'; h.tx = h.x + (Math.random()-0.5)*300; h.ty = h.y + (Math.random()-0.5)*300; h.tx = Math.max(100, Math.min(2500-100, h.tx)); h.ty = Math.max(100, Math.min(2000-100, h.ty)); h.timer = 0; } } 
+            else if(h.state === 'walk') { let angle = Math.atan2(h.ty - h.y, h.tx - h.x); h.x += Math.cos(angle) * 2; h.y += Math.sin(angle) * 2; h.flip = Math.cos(angle) < 0; h.anim += 0.15; if(Math.hypot(h.tx - h.x, h.ty - h.y) < 10) { h.state = 'idle'; h.anim = 0; } }
         });
     }
 
-    function returnToFarm() {
-        closeModals();
-        Music.stop();
-        gameState.mode = MODES.WORLD;
-        gameState.minigame.active = false;
-        document.getElementById('minigame-hud').style.display = 'none';
-        document.getElementById('ui-layer').querySelector('.hud-left').style.display='flex';
-        document.getElementById('result-screen').style.display = 'none';
-        
-        if(isTouchDevice) {
-            document.getElementById('mobile-actions').style.display = 'flex'; // Restore normal buttons
-            document.getElementById('joystick-touch-zone').style.display = 'block';
-            document.getElementById('mobile-jump-only').style.display = 'none';
-        }
-        
-        generateWorld(); 
-    }
+    function updateDog() { gameState.entities.dogs.forEach(d => { let dist = Math.hypot(d.x - gameState.player.x, d.y - gameState.player.y); if(dist > 150) { let angle = Math.atan2(gameState.player.y - d.y, gameState.player.x - d.x); d.x += Math.cos(angle) * 4.5; d.y += Math.sin(angle) * 4.5; d.flip = Math.cos(angle) < 0; d.anim += 0.3; } else { d.anim += 0.1; } }); }
+    function updateDucks() { gameState.entities.ducks.forEach(d => { d.x += 0.2; if(d.x > WORLD_W) d.x = 0; d.y += Math.sin(Date.now()/500 + d.offset)*0.2; }); }
+    function updateChickens() { gameState.entities.chickens.forEach(c => { if(c.panic > 0) { c.panic--; c.x += (Math.random()-0.5)*10; c.y += (Math.random()-0.5)*10; return; } if(c.timer <= 0) { c.state = Math.random() > 0.5 ? 'idle' : 'walk'; c.timer = 50 + Math.random()*100; if(c.state === 'walk') { c.vx = (Math.random()-0.5)*2; c.vy = (Math.random()-0.5)*2; } } c.timer--; if(c.state === 'walk') { c.x += c.vx; c.y += c.vy; if(c.x < 800 || c.x > 1400) c.vx *= -1; if(c.y < 800 || c.y > 1400) c.vy *= -1; } if(Math.hypot(c.x - gameState.player.x, c.y - gameState.player.y) < 40 && Math.hypot(gameState.player.vx, gameState.player.vy) > 1) { c.panic = 60; Sound.playCluck(); createParticles(c.x, c.y, "🪶", 3); } }); }
 
-    // --- 1. RACE MODE ---
-    function setupRace() {
-        gameState.player.x = 100; gameState.player.y = 300;
-        gameState.minigame.opponents = [ {x:100, y:200, speed: 7, color: '#333', rank:0}, {x:100, y:400, speed: 7.5, color: '#aaa', rank:0}, {x:100, y:500, speed: 6.8, color: '#630', rank:0} ];
-        gameState.minigame.objects = []; 
-        
-        for(let i=0; i<20; i++) gameState.minigame.objects.push({x: 500 + Math.random()*4000, y: 150 + Math.random()*400, w:40, h:40, type:'box'});
-        
-        for(let i=0; i<60; i++) {
-             gameState.minigame.objects.push({x: i*100, y: 100, w: 40, h: 40, type:'hay'}); 
-             gameState.minigame.objects.push({x: i*100, y: 600, w: 40, h: 40, type:'hay'}); 
-        }
-        
-        document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick: Rechts=Gas!" : "Drücke so schnell du kannst!";
-    }
-
-    function updateRace() {
-        if(gameState.minigame.state === 'warmup') {
-            gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown);
-            if(gameState.minigame.countdown <= 0) { 
-                gameState.minigame.state = 'play'; 
-                document.getElementById('mg-info').innerText = "LOS!"; 
-                Music.play('race'); 
-            } 
-            return;
-        }
-        if(gameState.minigame.state !== 'play') return;
-
-        let dx = 0; let dy = 0;
-        if(joy.active) {
-            if(joy.dx > 0.2) dx = 1; // Gas
-            if(Math.abs(joy.dy) > 0.2) dy = joy.dy; // Steer
-        } else {
-            if(keys.d || keys.ArrowRight) dx = 1; if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1;
-        }
-        
-        gameState.player.x += (gameState.player.speed + (dx > 0 ? (keys.Shift ? 2 : 1) * dx * 2 : 0)); 
-        gameState.player.y += dy * 4;
-        
-        gameState.player.y = Math.max(120, Math.min(580, gameState.player.y));
-        
-        gameState.player.animFrame += 0.3;
-
-        for(let o of gameState.minigame.objects) { if(Math.abs(gameState.player.x - o.x) < 30 && Math.abs(gameState.player.y - o.y) < 30) { gameState.player.x -= 20; Sound.playFail(); } }
-        for(let op of gameState.minigame.opponents) { op.x += op.speed + (Math.random()-0.3); op.animFrame = (op.animFrame||0) + 0.3; }
-
-        let dist = 5000;
-        let pPct = Math.floor((gameState.player.x / dist)*100);
-        document.getElementById('mg-score').innerText = pPct + "%";
-        
-        gameState.minigame.score = pPct;
-
-        if(gameState.player.x >= dist) {
-            gameState.minigame.score = 100 + Math.floor(gameState.player.stamina); 
-            let rank = 1; for(let op of gameState.minigame.opponents) if(op.x > gameState.player.x) rank++;
-            let stars = rank === 1 ? 5 : (rank === 2 ? 3 : 1); endMinigame(stars, "Platz " + rank + "!");
-        }
-    }
-
-    // --- 2. JUMP MODE ---
-    function setupJump() {
-        gameState.player.x = 0; gameState.player.y = 400;
-        gameState.player.z = 0; // Force reset Z
-        gameState.player.vz = 0;
-        gameState.minigame.objects = []; for(let i=1; i<=10; i++) gameState.minigame.objects.push({x: i * 400, type: 'fence', cleared: false});
-        document.getElementById('mg-info').innerText = isTouchDevice ? "Tippe den Button!" : "Pfeil Oben oder Tippen!";
-    }
-
-    function updateJump() {
-        if(gameState.minigame.state === 'warmup') {
-             gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown);
-             if(gameState.minigame.countdown <= 0) { 
-                 gameState.minigame.state = 'play'; 
-                 document.getElementById('mg-info').innerText = "Springe!";
-             }
-             return;
-        }
-        if(gameState.minigame.state !== 'play') return;
-
-        gameState.player.x += 8; gameState.player.animFrame += 0.3;
-        
-        if(gameState.player.z > 0 || gameState.player.vz !== 0) {
-            gameState.player.z += gameState.player.vz; 
-            gameState.player.vz -= 0.8; 
-            if(gameState.player.z <= 0) { 
-                gameState.player.z = 0; 
-                gameState.player.vz = 0; 
-            }
-        } 
-        
-        if ((keys.Space || keys.ArrowUp) && gameState.player.z === 0) { 
-            gameState.player.vz = 14; 
-            Sound.playJump(); 
-            keys.Space = false; 
-            keys.ArrowUp = false;
-        }
-
-        let nearObs = gameState.minigame.objects.find(o => !o.cleared && o.x - gameState.player.x < 250 && o.x - gameState.player.x > 0);
-        if(nearObs) {
-             document.getElementById('mg-info').innerText = "JETZT SPRINGEN!";
-             document.getElementById('mg-info').style.color = "#e74c3c";
-        } else {
-             document.getElementById('mg-info').innerText = "";
-        }
-
-        for(let f of gameState.minigame.objects) {
-            if(!f.cleared) {
-                if(Math.abs(gameState.player.x - f.x) < 20) {
-                    if(gameState.player.z > 20) { f.cleared = true; gameState.minigame.score += 100; Sound.playSuccess(); } 
-                    else if (Math.abs(gameState.player.x - f.x) < 5) { f.cleared = true; gameState.minigame.score -= 50; Sound.playFail(); gameState.player.speed = 2; }
+    function updateCat() {
+        gameState.entities.cats.forEach(c => {
+            // Find nearest mouse
+            let nearestMouse = null; let minD = 400;
+            gameState.entities.mice.forEach(m => { let d = Math.hypot(c.x-m.x, c.y-m.y); if(d<minD) { minD=d; nearestMouse=m; } });
+            
+            if(nearestMouse) {
+                let angle = Math.atan2(nearestMouse.y - c.y, nearestMouse.x - c.x);
+                c.x += Math.cos(angle) * 3.5; c.y += Math.sin(angle) * 3.5;
+                c.flip = Math.cos(angle) < 0; c.anim += 0.4;
+                if(minD < 10) { 
+                    // CATCH!
+                    gameState.entities.mice = gameState.entities.mice.filter(m => m !== nearestMouse);
+                    Sound.playMeow(); createParticles(c.x, c.y, "🐭", 1); createParticles(c.x, c.y, "❤️", 3);
+                    // Spawn new mouse elsewhere
+                    gameState.entities.mice.push({x: 500+Math.random()*1500, y: 500+Math.random()*1500, vx:0, vy:0, timer:0});
                 }
+            } else {
+                c.anim = 0; // Idle if no mouse nearby
             }
-        }
-        document.getElementById('mg-score').innerText = gameState.minigame.score;
-        if(gameState.player.x > 4200) {
-            let stars = Math.floor(gameState.minigame.score / 200); if(stars < 0) stars = 0; if(stars > 5) stars = 5;
-            endMinigame(stars, gameState.minigame.score + " Punkte");
-        }
+        });
+    }
+
+    function updateMice() {
+        gameState.entities.mice.forEach(m => {
+            if(m.timer <= 0) { m.vx = (Math.random()-0.5)*3; m.vy = (Math.random()-0.5)*3; m.timer = 30 + Math.random()*50; }
+            m.x += m.vx; m.y += m.vy; m.timer--;
+            // Run away from player
+            if(Math.hypot(m.x - gameState.player.x, m.y - gameState.player.y) < 60) {
+                let angle = Math.atan2(gameState.player.y - m.y, gameState.player.x - m.x);
+                m.x -= Math.cos(angle)*4; m.y -= Math.sin(angle)*4;
+            }
+        });
+    }
+
+    function handlePlayerMovement() {
+        const p = gameState.player; let dx = 0, dy = 0;
+        if(joy.active) { dx = joy.dx * 0.6; dy = joy.dy * 0.6; } 
+        else { if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1; if(keys.a || keys.ArrowLeft) dx = -1; if(keys.d || keys.ArrowRight) dx = 1; if (dx !== 0 || dy !== 0) { let length = Math.hypot(dx, dy); dx /= length; dy /= length; } }
+        let speed = p.speed; let isWinter = seasons[gameState.seasonIndex].name === 'Winter';
+        let onRiver = isNearRiver(p.x, p.y, 60); let inSea = p.x > 3600;
+        if(onRiver || inSea) {
+            if(isWinter && !inSea) { p.vx = p.vx * 0.99 + dx * 0.05; p.vy = p.vy * 0.99 + dy * 0.05; if(Math.hypot(p.vx, p.vy) > 0.5 && Math.random() < 0.05) Sound.playSlide(); } 
+            else { speed *= 0.3; if(Math.random() < 0.05 && (dx!=0 || dy!=0)) { Sound.playSplash(); createParticles(p.x, p.y, "💧", 1); } }
+        } else { p.vx = dx * speed; p.vy = dy * speed; }
+        let isSprinting = (keys.Shift || (joy.active && Math.hypot(joy.dx,joy.dy) > 0.9));
+        if(isSprinting && p.stamina > 0 && (dx!=0 || dy!=0)) { if((onRiver || inSea) && isWinter && !inSea) { p.vx*=1.02; p.vy*=1.02; } else { p.vx *= 1.6; p.vy *= 1.6; } p.stamina -= 0.5; } else { if(p.stamina < p.maxStamina) p.stamina += 0.2; }
+        if(p.z > 0 || p.vz !== 0) { p.z += p.vz; p.vz -= 0.8; if(p.z <= 0) { p.z = 0; p.vz = 0; Sound.playNoise(0.1); } }
+        let prevX = p.x; let prevY = p.y;
+        p.x += p.vx; p.y += p.vy;
+        if(Math.hypot(p.vx, p.vy) > 0.1) { p.animFrame += Math.hypot(p.vx, p.vy) * 0.05; p.flip = p.vx < 0; if(!onRiver && !inSea && Math.floor(p.animFrame*10) % 5 === 0 && p.z === 0) gameState.footprints.push({x: p.x, y: p.y, age: 100}); if(!onRiver && !inSea && Math.floor(p.animFrame*5) % 10 === 0 && p.z === 0) Sound.playNoise(0.05); } else { p.animFrame = 0; }
+        p.x = Math.max(50, Math.min(WORLD_W-50, p.x)); p.y = Math.max(50, Math.min(WORLD_H-50, p.y));
+        if(p.z < 10) { for(let o of gameState.terrain.obstacles) { if(p.x > o.x - 20 && p.x < o.x + o.w + 20 && p.y > o.y - 10 && p.y < o.y + o.h + 10) { p.x = prevX; p.y = prevY; p.vx = 0; p.vy = 0; } } }
     }
     
-    const handleJumpInput = (e) => {
-        if(gameState.mode === MODES.JUMP && gameState.minigame.state === 'play' && gameState.player.z === 0) {
-            gameState.player.vz = 14; 
-            Sound.playJump();
-        }
-    };
-    // canvas.addEventListener('mousedown', handleJumpInput); // Handled by button on mobile
+    // --- Minigame Logic (Existing) ---
+    function openTournamentMenu() { document.getElementById('tournament-screen').style.display = 'flex'; keys.Space = false; }
+    function startMinigame(typeString) {
+        closeModals(); gameState.minigame.active = true;
+        let mode = MODES.WORLD; if(typeString === 'race') mode = MODES.RACE; else if(typeString === 'jump') mode = MODES.JUMP; else if(typeString === 'dressage') mode = MODES.DRESSAGE; else if(typeString === 'foal_school') mode = MODES.FOAL_SCHOOL;
+        gameState.mode = mode; gameState.minigame.score = 0; gameState.minigame.timer = 0; gameState.minigame.state = 'warmup'; gameState.minigame.countdown = 3;
+        document.getElementById('minigame-hud').style.display = 'block'; document.getElementById('ui-layer').querySelector('.hud-left').style.display='none'; document.querySelectorAll('.context-hint').forEach(el => el.style.display = 'none'); document.getElementById('quest-box').style.display = 'none'; document.getElementById('mobile-actions').style.display = 'none';
+        let showJoystick = (isTouchDevice && (mode === MODES.WORLD || mode === MODES.RACE || mode === MODES.DRESSAGE || mode === MODES.FOAL_SCHOOL)); document.getElementById('joystick-touch-zone').style.display = showJoystick ? 'block' : 'none'; document.getElementById('mobile-jump-only').style.display = (isTouchDevice && mode === MODES.JUMP) ? 'block' : 'none'; document.getElementById('foal-school-actions').style.display = (mode === MODES.FOAL_SCHOOL) ? 'flex' : 'none';
+        if(isTouchDevice && mode === MODES.RACE) document.getElementById('mg-info').innerText = "Joystick: Lenken & Gas!"; else if(isTouchDevice && mode === MODES.DRESSAGE) document.getElementById('mg-info').innerText = "Joystick schnippen!"; else if(mode === MODES.FOAL_SCHOOL) document.getElementById('mg-info').innerText = "Führe die Tricks aus!";
+        canvas.focus(); 
+        if(mode === MODES.RACE) setupRace(); else if(mode === MODES.JUMP) setupJump(); else if(mode === MODES.DRESSAGE) setupDressage(); else if(mode === MODES.FOAL_SCHOOL) setupFoalSchool();
+    }
+    function endMinigame(stars, msg) { Music.stop(); gameState.minigame.state = 'end'; document.getElementById('result-screen').style.display = 'flex'; document.getElementById('result-text').innerText = msg; document.getElementById('result-stars').innerText = stars; gameState.stars += stars; document.getElementById('hs-input-group').style.display = 'block'; document.getElementById('player-name').value = localStorage.getItem('playerName') || ''; loadHighscores(); }
+    
+    function loadHighscores() {
+        if(!db) { document.getElementById('highscore-list').innerText = "Highscores nur online verfügbar."; return; }
+        let modeName = gameState.mode === MODES.RACE ? 'race' : (gameState.mode === MODES.JUMP ? 'jump' : (gameState.mode === MODES.FOAL_SCHOOL ? 'school' : 'dressage'));
+        document.getElementById('highscore-list').innerHTML = "Lade...";
+        try { const q = collection(db, 'artifacts', appId, 'public', 'data', 'highscores'); onSnapshot(q, (snapshot) => { const scores = []; snapshot.forEach(doc => { const data = doc.data(); if(data.mode === modeName) scores.push(data); }); scores.sort((a,b) => b.score - a.score); const top5 = scores.slice(0,5); let html = ""; top5.forEach((s, i) => { html += `<div class="hs-entry"><span class="hs-rank">#${i+1}</span> <span>${s.name}</span> <span>${s.score}</span></div>`; }); if(scores.length === 0) html = "Noch keine Highscores."; document.getElementById('highscore-list').innerHTML = html; }, (error) => { console.error("HS Error", error); document.getElementById('highscore-list').innerText = "Fehler beim Laden."; }); } catch(e) { console.error(e); }
+    }
+    function submitHighscore() { if(!db) { alert("Keine Datenbank-Verbindung!"); return; } if(!user) { if(auth && auth.currentUser) user = auth.currentUser; else { alert("Nicht angemeldet! Bitte Spiel neu laden."); return; } } const name = document.getElementById('player-name').value; if(!name) { alert("Bitte Namen eingeben!"); return; } localStorage.setItem('playerName', name); let modeName = gameState.mode === MODES.RACE ? 'race' : (gameState.mode === MODES.JUMP ? 'jump' : (gameState.mode === MODES.FOAL_SCHOOL ? 'school' : 'dressage')); document.getElementById('hs-input-group').style.display = 'none'; addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'highscores'), { name: name, score: gameState.minigame.score, mode: modeName, timestamp: Date.now() }).then(() => { }).catch(err => { alert("Fehler beim Speichern: " + err.message); document.getElementById('hs-input-group').style.display = 'block'; }); }
+    function returnToFarm() { closeModals(); Music.stop(); gameState.mode = MODES.WORLD; gameState.minigame.active = false; document.getElementById('minigame-hud').style.display = 'none'; document.getElementById('foal-school-actions').style.display = 'none'; document.getElementById('ui-layer').querySelector('.hud-left').style.display='flex'; document.getElementById('result-screen').style.display = 'none'; if(isTouchDevice) { document.getElementById('mobile-actions').style.display = 'flex'; document.getElementById('joystick-touch-zone').style.display = 'block'; document.getElementById('mobile-jump-only').style.display = 'none'; } generateWorld(); }
 
-    // --- 3. DRESSAGE MODE ---
+    function setupFoalSchool() { gameState.player.x = 400; gameState.player.y = 400; gameState.minigame.foalSchool.foal = { x: 500, y: 400, color: '#A1887F', flip: true, anim: 0, state: 'follow', trick: null }; gameState.minigame.foalSchool.trickWanted = null; gameState.minigame.foalSchool.trickTimer = 0; document.getElementById('mg-info').innerText = "Drücke die richtigen Buttons!"; }
+    function updateFoalSchool() { if(gameState.minigame.state === 'warmup') { gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown); if(gameState.minigame.countdown <= 0) { gameState.minigame.state = 'play'; document.getElementById('mg-info').innerText = "Achte auf die Blase!"; } return; } if(gameState.minigame.state !== 'play') return; handlePlayerMovement(); const f = gameState.minigame.foalSchool.foal; const p = gameState.player; gameState.minigame.foalSchool.trickTimer++; if(gameState.minigame.foalSchool.trickTimer > 200 && !gameState.minigame.foalSchool.trickWanted) { const tricks = ['rear', 'lie', 'spin']; gameState.minigame.foalSchool.trickWanted = tricks[Math.floor(Math.random()*tricks.length)]; gameState.minigame.foalSchool.trickTimer = 0; Sound.playPop(); } if (!gameState.minigame.foalSchool.trickWanted) { let dist = Math.hypot(f.x - p.x, f.y - p.y); if(dist > 80) { let angle = Math.atan2(p.y - f.y, p.x - f.x); f.x += Math.cos(angle) * 3.5; f.y += Math.sin(angle) * 3.5; f.anim += 0.2; f.flip = Math.cos(angle) < 0; } else { f.anim = 0; } } if(f.trick) { if(f.trick === 'rear') f.anim = Math.sin(Date.now()/100)*2; if(f.trick === 'lie') f.anim = 0; if(f.trick === 'spin') f.flip = (Math.floor(Date.now()/100)%2)===0; if(gameState.minigame.foalSchool.trickTimer > 60) { f.trick = null; gameState.minigame.foalSchool.trickTimer = 0; } } document.getElementById('mg-score').innerText = gameState.minigame.score; if(gameState.minigame.score >= 500) { endMinigame(5, "Toller Lehrer!"); } }
+    window.triggerFoalTrick = (trick) => { if(gameState.mode !== MODES.FOAL_SCHOOL || !gameState.minigame.foalSchool.trickWanted) return; if(trick === gameState.minigame.foalSchool.trickWanted) { gameState.minigame.score += 100; Sound.playSuccess(); createParticles(gameState.minigame.foalSchool.foal.x, gameState.minigame.foalSchool.foal.y, "✨", 10); gameState.minigame.foalSchool.foal.trick = trick; gameState.minigame.foalSchool.trickWanted = null; gameState.minigame.foalSchool.trickTimer = 0; } else { Sound.playFail(); gameState.minigame.score = Math.max(0, gameState.minigame.score - 20); } };
+    function drawFoalSchool() { ctx.fillStyle = "#A5D6A7"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.save(); ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(gameState.zoom, gameState.zoom); ctx.translate(-canvas.width/2, -canvas.height/2); ctx.translate(-gameState.camX, -gameState.camY); ctx.beginPath(); ctx.arc(400, 400, 300, 0, Math.PI*2); ctx.strokeStyle = "#8D6E63"; ctx.lineWidth = 10; ctx.stroke(); const p = gameState.player; const f = gameState.minigame.foalSchool.foal; let rot = 0; let ty = 0; if(f.trick==='rear') { rot = -0.4; ty = -20; } if(f.trick==='lie') { rot = Math.PI/2; ty = 30; } ctx.save(); ctx.translate(f.x, f.y); if(rot!==0) ctx.rotate(rot); if(f.trick) ctx.translate(-f.x, -f.y + ty); else ctx.translate(-f.x, -f.y); drawRealisticHorse(ctx, f.x, f.y, f.color, f.flip, false, f.anim, (f.anim>0 && !f.trick), 0, 0.7); ctx.restore(); if(gameState.minigame.foalSchool.trickWanted) { ctx.fillStyle = "white"; ctx.beginPath(); ctx.ellipse(f.x, f.y - 60, 30, 25, 0, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.stroke(); ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; let icon = "❓"; if(gameState.minigame.foalSchool.trickWanted === 'rear') icon = "🦄"; if(gameState.minigame.foalSchool.trickWanted === 'lie') icon = "💤"; if(gameState.minigame.foalSchool.trickWanted === 'spin') icon = "🌪️"; ctx.fillText(icon, f.x, f.y - 60); } let isMoving = Math.hypot(p.vx, p.vy) > 0.1; drawRealisticHorse(ctx, p.x, p.y, p.color, p.flip, true, p.animFrame, isMoving, p.z, 1); ctx.font = "20px Arial"; for(let i=gameState.particles.length-1; i>=0; i--) { let pt = gameState.particles[i]; pt.y -= 1; pt.life -= 0.02; ctx.globalAlpha = pt.life; ctx.fillText(pt.char, pt.x, pt.y); if(pt.life<=0) gameState.particles.splice(i,1); } ctx.globalAlpha = 1; ctx.restore(); }
+
+    function setupRace() { gameState.player.x = 100; gameState.player.y = 300; gameState.minigame.opponents = [ {x:100, y:200, speed: 7, color: '#333', rank:0}, {x:100, y:400, speed: 7.5, color: '#aaa', rank:0}, {x:100, y:500, speed: 6.8, color: '#630', rank:0} ]; gameState.minigame.objects = []; for(let i=0; i<20; i++) gameState.minigame.objects.push({x: 500 + Math.random()*4000, y: 150 + Math.random()*400, w:40, h:40, type:'box'}); for(let i=0; i<60; i++) { gameState.minigame.objects.push({x: i*100, y: 100, w: 40, h: 40, type:'hay'}); gameState.minigame.objects.push({x: i*100, y: 600, w: 40, h: 40, type:'hay'}); } document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick: Lenken & Gas!" : "WASD zum Lenken!"; }
+    function updateRace() { if(gameState.minigame.state === 'warmup') { gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown); if(gameState.minigame.countdown <= 0) { gameState.minigame.state = 'play'; document.getElementById('mg-info').innerText = "LOS!"; Music.play('race'); } return; } if(gameState.minigame.state !== 'play') return; let dx = 0; let dy = 0; if(joy.active) { if(joy.dx > 0.2) dx = 1; if(Math.abs(joy.dy) > 0.2) dy = joy.dy; } else { if(keys.d || keys.ArrowRight) dx = 1; if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1; } gameState.player.x += (gameState.player.speed + (dx > 0 ? (keys.Shift ? 2 : 1) * dx * 2 : 0)); gameState.player.y += dy * 4; gameState.player.y = Math.max(120, Math.min(580, gameState.player.y)); gameState.player.animFrame += 0.3; for(let o of gameState.minigame.objects) { if(Math.abs(gameState.player.x - o.x) < 30 && Math.abs(gameState.player.y - o.y) < 30) { gameState.player.x -= 20; Sound.playFail(); } } for(let op of gameState.minigame.opponents) { op.x += op.speed + (Math.random()-0.3); op.animFrame = (op.animFrame||0) + 0.3; } let dist = 5000; let pPct = Math.floor((gameState.player.x / dist)*100); document.getElementById('mg-score').innerText = pPct + "%"; gameState.minigame.score = pPct; if(gameState.player.x >= dist) { gameState.minigame.score = 100 + Math.floor(gameState.player.stamina); let rank = 1; for(let op of gameState.minigame.opponents) if(op.x > gameState.player.x) rank++; let stars = rank === 1 ? 5 : (rank === 2 ? 3 : 1); endMinigame(stars, "Platz " + rank + "!"); } }
+
+    function setupJump() { gameState.player.x = 0; gameState.player.y = 400; gameState.player.z = 0; gameState.player.vz = 0; gameState.minigame.objects = []; for(let i=1; i<=10; i++) gameState.minigame.objects.push({x: i * 400, type: 'fence', cleared: false}); document.getElementById('mg-info').innerText = isTouchDevice ? "Tippe den Button!" : "Pfeil Oben oder Tippen!"; }
+    function updateJump() { if(gameState.minigame.state === 'warmup') { gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown); if(gameState.minigame.countdown <= 0) { gameState.minigame.state = 'play'; document.getElementById('mg-info').innerText = "Springe!"; } return; } if(gameState.minigame.state !== 'play') return; gameState.player.x += 8; gameState.player.animFrame += 0.3; if(gameState.player.z > 0 || gameState.player.vz !== 0) { gameState.player.z += gameState.player.vz; gameState.player.vz -= 0.8; if(gameState.player.z <= 0) { gameState.player.z = 0; gameState.player.vz = 0; } } if ((keys.Space || keys.ArrowUp) && gameState.player.z === 0) { gameState.player.vz = 14; Sound.playJump(); keys.Space = false; keys.ArrowUp = false; } let nearObs = gameState.minigame.objects.find(o => !o.cleared && o.x - gameState.player.x < 250 && o.x - gameState.player.x > 0); if(nearObs) { document.getElementById('mg-info').innerText = "JETZT SPRINGEN!"; document.getElementById('mg-info').style.color = "#e74c3c"; } else { document.getElementById('mg-info').innerText = ""; } for(let f of gameState.minigame.objects) { if(!f.cleared) { if(Math.abs(gameState.player.x - f.x) < 20) { if(gameState.player.z > 20) { f.cleared = true; gameState.minigame.score += 100; Sound.playSuccess(); } else if (Math.abs(gameState.player.x - f.x) < 5) { f.cleared = true; gameState.minigame.score -= 50; Sound.playFail(); gameState.player.speed = 2; } } } } document.getElementById('mg-score').innerText = gameState.minigame.score; if(gameState.player.x > 4200) { let stars = Math.floor(gameState.minigame.score / 200); if(stars < 0) stars = 0; if(stars > 5) stars = 5; endMinigame(stars, gameState.minigame.score + " Punkte"); } }
+    const handleJumpInput = (e) => { if(gameState.mode === MODES.JUMP && gameState.minigame.state === 'play' && gameState.player.z === 0) { gameState.player.vz = 14; Sound.playJump(); } };
+
     const DRESSAGE_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-    function setupDressage() {
-        gameState.player.x = canvas.width/2; gameState.player.y = canvas.height/2 + 100;
-        gameState.minigame.objects = []; gameState.minigame.timer = 0;
-        gameState.minigame.dressageOffset = {x:0, y:0};
-        gameState.minigame.feedbackText = null;
-        document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick nutzen!" : "Drücke Pfeiltasten im Takt!";
-    }
-    
-    function handleDressageInput(key) {
-        keys[key] = true;
-        setTimeout(() => keys[key] = false, 100);
-    }
+    function setupDressage() { gameState.player.x = canvas.width/2; gameState.player.y = canvas.height/2 + 100; gameState.minigame.objects = []; gameState.minigame.timer = 0; gameState.minigame.dressageOffset = {x:0, y:0}; gameState.minigame.feedbackText = null; document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick nutzen!" : "Drücke Pfeiltasten im Takt!"; }
+    function handleDressageInput(key) { keys[key] = true; setTimeout(() => keys[key] = false, 100); }
+    function updateDressage() { if(gameState.minigame.state === 'warmup') { gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = "Gleich gehts los!"; if(gameState.minigame.countdown <= 0) { gameState.minigame.state = 'play'; document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick in Pfeilrichtung!" : "Drücke Pfeiltasten im goldenen Ring!"; Music.play('dressage'); } return; } if(gameState.minigame.state !== 'play') return; gameState.minigame.timer++; if(gameState.minigame.timer % 60 === 0) { let k = DRESSAGE_KEYS[Math.floor(Math.random()*4)]; gameState.minigame.objects.push({key: k, y: 0, hit: false}); } let targetY = canvas.height - 100; for(let arr of gameState.minigame.objects) { arr.y += 3; } let inputKey = null; if(joy.active) { let threshold = 0.5; if (joy.triggerReset) { if (joy.dy < -threshold) { inputKey = 'ArrowUp'; joy.triggerReset = false; } else if (joy.dy > threshold) { inputKey = 'ArrowDown'; joy.triggerReset = false; } else if (joy.dx < -threshold) { inputKey = 'ArrowLeft'; joy.triggerReset = false; } else if (joy.dx > threshold) { inputKey = 'ArrowRight'; joy.triggerReset = false; } } else { if (Math.abs(joy.dx) < 0.2 && Math.abs(joy.dy) < 0.2) { joy.triggerReset = true; } } } if(keys.w) { inputKey = 'ArrowUp'; keys.w = false; } else if(keys.ArrowUp) { inputKey = 'ArrowUp'; keys.ArrowUp = false; } else if(keys.s) { inputKey = 'ArrowDown'; keys.s = false; } else if(keys.ArrowDown) { inputKey = 'ArrowDown'; keys.ArrowDown = false; } else if(keys.a) { inputKey = 'ArrowLeft'; keys.a = false; } else if(keys.ArrowLeft) { inputKey = 'ArrowLeft'; keys.ArrowLeft = false; } else if(keys.d) { inputKey = 'ArrowRight'; keys.d = false; } else if(keys.ArrowRight) { inputKey = 'ArrowRight'; keys.ArrowRight = false; } gameState.minigame.dressageOffset.x *= 0.9; gameState.minigame.dressageOffset.y *= 0.9; if(gameState.player.z > 0) { gameState.player.z -= 2; } if(inputKey) { if(inputKey === 'ArrowLeft') gameState.minigame.dressageOffset.x = -80; if(inputKey === 'ArrowRight') gameState.minigame.dressageOffset.x = 80; if(inputKey === 'ArrowUp') gameState.player.z = 60; if(inputKey === 'ArrowDown') gameState.minigame.dressageOffset.y = 40; let closest = gameState.minigame.objects.find(a => !a.hit && Math.abs(a.y - targetY) < 60); if(closest && closest.key === inputKey) { closest.hit = true; gameState.minigame.score += 50; Sound.playSuccess(); gameState.player.animFrame += 1; createParticles(canvas.width/2, targetY, "✨", 5); gameState.minigame.feedbackText = { text: "Perfekt!", alpha: 1.0, y: targetY - 50 }; gameState.player.vz = 5; } else { gameState.minigame.feedbackText = { text: "Ups!", alpha: 1.0, y: targetY - 50 }; } } if(gameState.player.z > 0 || gameState.player.vz !== 0) { gameState.player.z += gameState.player.vz; gameState.player.vz -= 1; if(gameState.player.z < 0) { gameState.player.z = 0; gameState.player.vz = 0; } } gameState.minigame.objects = gameState.minigame.objects.filter(a => a.y < canvas.height); document.getElementById('mg-score').innerText = gameState.minigame.score; if(gameState.minigame.timer > 1200) { let stars = Math.floor(gameState.minigame.score / 200); if(stars > 5) stars = 5; endMinigame(stars, "Tanz beendet!"); } }
 
-    function updateDressage() {
-        if(gameState.minigame.state === 'warmup') {
-             gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = "Gleich gehts los!";
-             if(gameState.minigame.countdown <= 0) {
-                 gameState.minigame.state = 'play';
-                 document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick in Pfeilrichtung!" : "Drücke Pfeiltasten im goldenen Ring!";
-                 Music.play('dressage'); 
-             }
-             return;
-        }
-        if(gameState.minigame.state !== 'play') return;
-
-        gameState.minigame.timer++;
-        if(gameState.minigame.timer % 60 === 0) { let k = DRESSAGE_KEYS[Math.floor(Math.random()*4)]; gameState.minigame.objects.push({key: k, y: 0, hit: false}); }
-        let targetY = canvas.height - 100; 
-        
-        for(let arr of gameState.minigame.objects) { arr.y += 3; }
-
-        let inputKey = null;
-
-        // Joystick Logic for Dressage
-        if(joy.active) {
-            let threshold = 0.5;
-            // Only trigger if we reset or changed direction significantly
-            if (joy.triggerReset) {
-                if (joy.dy < -threshold) { inputKey = 'ArrowUp'; joy.triggerReset = false; }
-                else if (joy.dy > threshold) { inputKey = 'ArrowDown'; joy.triggerReset = false; }
-                else if (joy.dx < -threshold) { inputKey = 'ArrowLeft'; joy.triggerReset = false; }
-                else if (joy.dx > threshold) { inputKey = 'ArrowRight'; joy.triggerReset = false; }
-            } else {
-                // Check if returned to center
-                if (Math.abs(joy.dx) < 0.2 && Math.abs(joy.dy) < 0.2) {
-                    joy.triggerReset = true;
-                }
-            }
-        }
-
-        // Keyboard Logic
-        if(keys.w) { inputKey = 'ArrowUp'; keys.w = false; }
-        else if(keys.ArrowUp) { inputKey = 'ArrowUp'; keys.ArrowUp = false; }
-        else if(keys.s) { inputKey = 'ArrowDown'; keys.s = false; }
-        else if(keys.ArrowDown) { inputKey = 'ArrowDown'; keys.ArrowDown = false; }
-        else if(keys.a) { inputKey = 'ArrowLeft'; keys.a = false; }
-        else if(keys.ArrowLeft) { inputKey = 'ArrowLeft'; keys.ArrowLeft = false; }
-        else if(keys.d) { inputKey = 'ArrowRight'; keys.d = false; }
-        else if(keys.ArrowRight) { inputKey = 'ArrowRight'; keys.ArrowRight = false; }
-
-        gameState.minigame.dressageOffset.x *= 0.9;
-        gameState.minigame.dressageOffset.y *= 0.9;
-        if(gameState.player.z > 0) { gameState.player.z -= 2; }
-
-        if(inputKey) {
-            if(inputKey === 'ArrowLeft') gameState.minigame.dressageOffset.x = -80;
-            if(inputKey === 'ArrowRight') gameState.minigame.dressageOffset.x = 80;
-            if(inputKey === 'ArrowUp') gameState.player.z = 60; 
-            if(inputKey === 'ArrowDown') gameState.minigame.dressageOffset.y = 40; 
-
-            let closest = gameState.minigame.objects.find(a => !a.hit && Math.abs(a.y - targetY) < 60); 
-            if(closest && closest.key === inputKey) { 
-                closest.hit = true; gameState.minigame.score += 50; 
-                Sound.playSuccess(); gameState.player.animFrame += 1; 
-                createParticles(canvas.width/2, targetY, "✨", 5);
-                gameState.minigame.feedbackText = { text: "Perfekt!", alpha: 1.0, y: targetY - 50 };
-                gameState.player.vz = 5; 
-            } else {
-                 gameState.minigame.feedbackText = { text: "Ups!", alpha: 1.0, y: targetY - 50 };
-            }
-        }
-        
-        if(gameState.player.z > 0 || gameState.player.vz !== 0) {
-            gameState.player.z += gameState.player.vz;
-            gameState.player.vz -= 1;
-            if(gameState.player.z < 0) { gameState.player.z = 0; gameState.player.vz = 0; }
-        }
-
-        gameState.minigame.objects = gameState.minigame.objects.filter(a => a.y < canvas.height);
-        document.getElementById('mg-score').innerText = gameState.minigame.score;
-        if(gameState.minigame.timer > 1200) { let stars = Math.floor(gameState.minigame.score / 200); if(stars > 5) stars = 5; endMinigame(stars, "Tanz beendet!"); }
-    }
-
-    // --- Entity Updates (World) ---
-    function updateHorses() {
-        for(let h of gameState.entities.horses) {
-            if(h.isFoal) {
-                if(h.trickTimer > 0) { h.trickTimer--; if(h.trick === 'rear') h.anim = Math.sin(Date.now()/100)*2; if(h.trick === 'lie') h.anim = 0; continue; }
-                let dist = Math.hypot(h.x - h.parent.x, h.y - h.parent.y);
-                if(dist > 60) { let angle = Math.atan2(h.parent.y - h.y, h.parent.x - h.x); h.x += Math.cos(angle) * 3; h.y += Math.sin(angle) * 3; h.anim += 0.2; h.flip = Math.cos(angle) < 0; } else h.anim = 0;
-            } else {
-                if(h.state === 'idle') { h.timer++; if(h.timer > 200) { h.state = 'walk'; h.tx = h.x + (Math.random()-0.5)*400; h.ty = h.y + (Math.random()-0.5)*400; h.tx = Math.max(50, Math.min(WORLD_W-50, h.tx)); h.ty = Math.max(50, Math.min(WORLD_H-50, h.ty)); } } 
-                else if(h.state === 'walk') { let dx = h.tx - h.x, dy = h.ty - h.y; let dist = Math.hypot(dx, dy); if(dist < 5) { h.state = 'idle'; h.timer = 0; h.anim = 0; } else { h.x += (dx/dist)*1.5; h.y += (dy/dist)*1.5; h.flip = dx < 0; h.anim += 0.1; } }
-            }
-        }
-    }
-    function updateDog() { let d=gameState.entities.dogs[0]; d.timer--; if(d.timer<=0){d.timer=200; d.state=d.state==='idle'?'follow':'idle';} if(d.state==='follow' && Math.hypot(d.x-gameState.player.x, d.y-gameState.player.y)>100) { let a=Math.atan2(gameState.player.y-d.y, gameState.player.x-d.x); d.x+=Math.cos(a)*4; d.y+=Math.sin(a)*4; d.anim+=0.3; d.flip=Math.cos(a)>0; } else d.anim=0; }
-    function updateDucks() { for(let d of gameState.entities.ducks) d.x += Math.sin((Date.now()/1000) + d.offset) * 0.5; }
-    function updateChickens() { const p = gameState.player; gameState.entities.chickens.forEach(c => { let dist = Math.hypot(c.x - p.x, c.y - p.y); if (dist < 120) { if (c.panic <= 0) { c.panic = 60; Sound.playCluck(); createParticles(c.x, c.y, "🪶", 2); } let angle = Math.atan2(c.y - p.y, c.x - p.x); c.vx = Math.cos(angle) * 5; c.vy = Math.sin(angle) * 5; } else if (c.panic > 0) { c.panic--; c.vx *= 0.95; c.vy *= 0.95; } else { c.timer--; if(c.timer <= 0) { c.timer = 100 + Math.random() * 200; let angle = Math.random() * Math.PI * 2; c.vx = Math.cos(angle) * 0.5; c.vy = Math.sin(angle) * 0.5; } } c.x += c.vx; c.y += c.vy; c.x = Math.max(50, Math.min(WORLD_W-50, c.x)); c.y = Math.max(50, Math.min(WORLD_H-50, c.y)); }); }
-
-    // --- Interactions ---
     function playerJump() { if(gameState.player.z === 0) { gameState.player.vz = 12; Sound.playJump(); } }
-    function interact() {
-        if(gameState.training.active) return;
-        let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50); if(nearBed) { handleGardenInteract(nearBed); return; }
-        let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); if(nearFoal) { startTraining(nearFoal); return; }
-        // Tournament interact handled in Loop
-        dropItem();
-    }
+    function interact() { if(gameState.training.active) return; let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50); if(nearBed) { handleGardenInteract(nearBed); return; } let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); if(nearFoal) { startTraining(nearFoal); return; } dropItem(); }
     function dropItem() { if(!gameState.inventory) return; Sound.playPop(); const p = gameState.player; let dx = p.flip ? 60 : -60; gameState.entities.items.push({ x: p.x + dx, y: p.y, type: gameState.inventory }); gameState.inventory = null; createParticles(p.x, p.y, "💨", 5); updateUI(); if(gameState.quest.horse) updateQuestUI(); }
-    function handleGardenInteract(b) { if(!b.plant && gameState.inventory && (gameState.inventory.name==='Apfel'||gameState.inventory.name==='Möhre')) { b.plant=gameState.inventory.name; b.growth=0; b.watered=false; Sound.playNoise(0.5); gameState.inventory=null; updateUI(); } else if(b.plant && !b.watered && gameState.inventory && gameState.inventory.name==='Wasser') { b.watered=true; Sound.playSplash(); gameState.inventory=null; updateUI(); } else if(b.plant && b.growth>=100) { gameState.entities.items.push({x:b.x+30,y:b.y+60,type:itemTypes[b.plant==='Apfel'?'apple':'carrot']}); Sound.playPop(); b.plant=null; } }
+    function handleGardenInteract(b) { if(!b.plant && gameState.inventory && (gameState.inventory.name==='Apfel'||gameState.inventory.name==='Möhre')) { b.plant=gameState.inventory.name; b.growth=0; b.watered=false; Sound.playNoise(0.5); gameState.inventory=null; updateUI(); } else if(b.plant && !b.watered && gameState.inventory && gameState.inventory.name==='Wasser') { b.watered=true; Sound.playSplash(); gameState.inventory=null; updateUI(); } else if(b.plant && b.growth>=100) { gameState.entities.items.push({ x:b.x+30, y:b.y+60, type:itemTypes[b.plant==='Apfel'?'apple':'carrot'] }); Sound.playPop(); b.plant=null; } }
     function updateGarden() { gameState.terrain.beds.forEach(b => { if(b.plant && b.watered && b.growth < 100) b.growth += 0.05; }); let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50); document.getElementById('garden-hint').style.display = nearBed ? 'block' : 'none'; let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); document.getElementById('train-btn').style.display = nearFoal ? 'flex' : 'none'; }
     function toggleTrainingMenu() { let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); if(nearFoal) startTraining(nearFoal); }
     function startTraining(foal) { gameState.training.active = !gameState.training.active; gameState.training.targetFoal = foal; document.getElementById('training-actions').style.display = gameState.training.active ? 'flex' : 'none'; }
     function commandFoal(cmd) { const f = gameState.training.targetFoal; if(cmd==='rear') { f.trick='rear'; f.trickTimer=60; Sound.playJump(); createParticles(f.x,f.y,"✨",5); } if(cmd==='lie') { f.trick='lie'; f.trickTimer=100; Sound.playNoise(0.2); createParticles(f.x,f.y,"💤",5); } gameState.stars+=1; updateUI(); gameState.training.active=false; document.getElementById('training-actions').style.display='none'; }
-    function checkCollisions() {
-        const p = gameState.player;
-        if(!gameState.inventory) { for(let i=0; i<gameState.entities.items.length; i++) { let it=gameState.entities.items[i]; if(Math.hypot(p.x-it.x, p.y-it.y)<40) { gameState.inventory=it.type; gameState.entities.items.splice(i,1); Sound.playPop(); updateUI(); break; } } }
-        if(gameState.quest.horse && !gameState.quest.horse.satisfied) { let h=gameState.quest.horse; if(Math.hypot(p.x-h.x, p.y-h.y)<80) { if(gameState.inventory && gameState.inventory.name===h.want.name) completeQuest(h); } }
-    }
+    function checkCollisions() { const p = gameState.player; if(!gameState.inventory) { for(let i=0; i<gameState.entities.items.length; i++) { let it=gameState.entities.items[i]; if(Math.hypot(p.x-it.x, p.y-it.y)<40) { gameState.inventory=it.type; gameState.entities.items.splice(i,1); Sound.playPop(); updateUI(); break; } } } if(gameState.quest.horse && !gameState.quest.horse.satisfied) { let h=gameState.quest.horse; if(Math.hypot(p.x-h.x, p.y-h.y)<80) { if(gameState.inventory && gameState.inventory.name===h.want.name) completeQuest(h); } } }
     function completeQuest(h) { h.satisfied = true; gameState.inventory = null; gameState.stars += 1; Sound.playSuccess(); createParticles(h.x, h.y, "❤️", 10); updateUI(); updateQuestUI(); setTimeout(() => { const next = gameState.entities.horses.find(nh => !nh.isFoal && !nh.satisfied); gameState.quest.horse = next || null; updateQuestUI(); }, 2000); }
     function checkHouseSleep() { if(gameState.sleeping) return; const p=gameState.player; const h=gameState.terrain.house; if(h && p.x>h.x+60 && p.x<h.x+h.w-60 && p.y>h.y+h.h-40 && p.y<h.y+h.h+20) { gameState.sleeping=true; Sound.playSleep(); document.getElementById('sleep-overlay').style.opacity=1; setTimeout(() => { gameState.time=0.25; gameState.player.stamina=100; gameState.player.x+=20; updateUI(); setTimeout(() => { document.getElementById('sleep-overlay').style.opacity=0; gameState.sleeping=false; }, 1500); }, 1500); } }
 
-    // --- Draw ---
     function draw() {
         if(gameState.mode === MODES.WORLD) drawWorld();
         else if(gameState.mode === MODES.RACE) drawRace();
         else if(gameState.mode === MODES.JUMP) drawJump();
         else if(gameState.mode === MODES.DRESSAGE) drawDressage();
-        
-        if(isTouchDevice && (gameState.mode === MODES.WORLD || gameState.mode === MODES.RACE || gameState.mode === MODES.DRESSAGE)) drawJoystick();
+        else if(gameState.mode === MODES.FOAL_SCHOOL) drawFoalSchool();
+        if(isTouchDevice && (gameState.mode === MODES.WORLD || gameState.mode === MODES.RACE || gameState.mode === MODES.DRESSAGE || gameState.mode === MODES.FOAL_SCHOOL)) drawJoystick();
     }
 
     function drawWorld() {
         const season = seasons[gameState.seasonIndex];
         ctx.fillStyle = season.bg; ctx.fillRect(0,0,canvas.width, canvas.height);
         
-        // Sky Overlay
         let t = gameState.time; let overlay = null; if(t<0.2) overlay = "rgba(135,206,235,0.3)"; else if(t>0.7) overlay = `rgba(0,0,50,${(t-0.7)*3})`;
-        
-        ctx.save();
-        ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(gameState.zoom, gameState.zoom);
-        ctx.translate(-canvas.width/2, -canvas.height/2); ctx.translate(-gameState.camX, -gameState.camY);
+        ctx.save(); ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(gameState.zoom, gameState.zoom); ctx.translate(-canvas.width/2, -canvas.height/2); ctx.translate(-gameState.camX, -gameState.camY);
 
-        // Footprints with fading opacity
-        for(let fp of gameState.footprints) { 
-            ctx.fillStyle = `rgba(0,0,0,${Math.min(0.2, fp.age/500)})`; // Opacity based on age
-            ctx.beginPath(); ctx.ellipse(fp.x, fp.y+45, 10, 5, 0, 0, Math.PI*2); ctx.fill(); 
-        }
+        // Draw Biomes
+        // Beach
+        ctx.fillStyle = "#f39c12"; // Sand
+        ctx.fillRect(2500, 0, 1500, 2500);
+        ctx.fillStyle = "#3498db"; // Sea
+        ctx.fillRect(3600, 0, 400, 2500);
 
-        // River
+        // Crystal Forest ground
+        ctx.fillStyle = "#2c3e50"; // Dark ground
+        ctx.fillRect(0, 2000, 4000, 500);
+
+        for(let fp of gameState.footprints) { ctx.fillStyle = `rgba(0,0,0,${Math.min(0.2, fp.age/500)})`; ctx.beginPath(); ctx.ellipse(fp.x, fp.y+45, 10, 5, 0, 0, Math.PI*2); ctx.fill(); }
+
         if(gameState.terrain.riverPoints.length>0) {
             ctx.lineCap = 'round'; ctx.lineJoin = 'round';
             ctx.lineWidth = 140; ctx.strokeStyle = "#90A4AE"; ctx.beginPath(); gameState.terrain.riverPoints.forEach((p,i)=>i==0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
@@ -1089,6 +643,14 @@
         ctx.fillStyle = "#8d6e63"; gameState.terrain.fences.forEach(f => { ctx.beginPath(); ctx.rect(f.x-5, f.y-10, 10, 20); ctx.fill(); });
         gameState.entities.decorations.forEach(d => { ctx.font = d.type==='tournament'?"80px Arial":"40px Arial"; ctx.fillText(d.emoji, d.x, d.y); });
         ctx.font = "20px Arial"; gameState.entities.leafPiles.forEach(l => { ctx.fillText("🍂", l.x, l.y); });
+        ctx.font = "30px Arial"; ctx.textAlign = "center";
+        gameState.terrain.shells.forEach(s => ctx.fillText(s.type, s.x, s.y));
+        gameState.terrain.crystals.forEach(c => { 
+             ctx.fillStyle = c.color; ctx.shadowColor=c.color; ctx.shadowBlur=15; 
+             ctx.beginPath(); ctx.moveTo(c.x, c.y-20); ctx.lineTo(c.x+10, c.y); ctx.lineTo(c.x, c.y+20); ctx.lineTo(c.x-10, c.y); ctx.fill();
+             ctx.shadowBlur=0; 
+        });
+
         ctx.globalAlpha = 1.0; ctx.fillStyle = "black"; ctx.font = "30px Arial"; gameState.entities.ducks.forEach(d => ctx.fillText("🦆", d.x, d.y));
         ctx.fillStyle = "#5d4037"; gameState.terrain.obstacles.forEach(o => { ctx.beginPath(); ctx.roundRect(o.x, o.y, o.w, o.h, 10); ctx.fill(); });
         ctx.font = "30px Arial"; ctx.textAlign = "center"; gameState.entities.items.forEach(it => { ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.ellipse(it.x, it.y+10, 15, 6, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "black"; ctx.fillText(it.type.emoji, it.x, it.y + Math.sin(Date.now()/300)*5); });
@@ -1097,6 +659,8 @@
             ...gameState.entities.horses.map(h => ({...h, type:'horse'})),
             ...gameState.entities.dogs.map(d => ({...d, type:'dog'})),
             ...gameState.entities.chickens.map(c => ({...c, type:'chicken'})),
+            ...gameState.entities.cats.map(c => ({...c, type:'cat'})),
+            ...gameState.entities.mice.map(m => ({...m, type:'mouse'})),
             {...gameState.terrain.house, type: 'house', y: gameState.terrain.house.y + gameState.terrain.house.h},
             {...gameState.player, type:'player'}
         ];
@@ -1115,7 +679,8 @@
             }
             if(obj.type === 'dog') drawDog(ctx, obj);
             if(obj.type === 'chicken') drawChicken(ctx, obj);
-            // FIX: Use velocity check for animation state instead of keys
+            if(obj.type === 'cat') drawCat(ctx, obj);
+            if(obj.type === 'mouse') drawMouse(ctx, obj);
             if(obj.type === 'player') {
                 let isMoving = Math.hypot(obj.vx, obj.vy) > 0.1;
                 drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, true, obj.animFrame, isMoving, obj.z, 1);
@@ -1126,86 +691,20 @@
         ctx.font = "20px Arial"; for(let i=gameState.particles.length-1; i>=0; i--) { let p = gameState.particles[i]; p.y -= 1; p.life -= 0.02; ctx.globalAlpha = p.life; ctx.fillText(p.char, p.x, p.y); if(p.life<=0) gameState.particles.splice(i,1); } ctx.globalAlpha = 1; 
 
         ctx.restore();
-        
-        ctx.fillStyle = "white"; ctx.font = "20px Fredoka"; ctx.textAlign = "right"; ctx.fillText(season.name, canvas.width - 20, 100);
         if(overlay) { ctx.fillStyle = overlay; ctx.fillRect(0,0,canvas.width, canvas.height); }
     }
-    
-    function drawRace() {
-        ctx.fillStyle = "#e67e22"; ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.save(); ctx.translate(100 - gameState.player.x, 0); 
-        ctx.fillStyle = "#d35400"; ctx.fillRect(0, 100, 5000, 10); ctx.fillRect(0, 600, 5000, 10);
-        ctx.fillStyle = "white"; for(let i=0; i<10; i++) { ctx.fillRect(5000, 100 + i*50, 20, 20); ctx.fillStyle = ctx.fillStyle==="#000"?"#fff":"#000"; }
-        
-        // Draw Obstacles
-        for(let o of gameState.minigame.objects) {
-            if(o.type === 'hay') ctx.fillStyle = "#f1c40f"; else ctx.fillStyle = "#555";
-            ctx.fillRect(o.x, o.y, o.w, o.h);
-            if(o.type === 'hay') { // Detail for hay
-                 ctx.strokeStyle = "#d4ac0d"; ctx.lineWidth=2; ctx.strokeRect(o.x, o.y, o.w, o.h);
-                 ctx.beginPath(); ctx.moveTo(o.x+5, o.y+5); ctx.lineTo(o.x+o.w-5, o.y+o.h-5); ctx.stroke();
-            }
-        }
-        
-        // Draw Opponents with realistic horse function
-        for(let op of gameState.minigame.opponents) {
-            drawRealisticHorse(ctx, op.x, op.y, op.color, false, false, (op.animFrame||0), true, 0, 1);
-        }
-        // Draw Player
-        drawRealisticHorse(ctx, gameState.player.x, gameState.player.y, gameState.player.color, false, true, gameState.player.animFrame, true, 0, 1);
-        ctx.restore();
-    }
+    function drawRace() { ctx.fillStyle = "#e67e22"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.save(); ctx.translate(100 - gameState.player.x, 0); ctx.fillStyle = "#d35400"; ctx.fillRect(0, 100, 5000, 10); ctx.fillRect(0, 600, 5000, 10); ctx.fillStyle = "white"; for(let i=0; i<10; i++) { ctx.fillRect(5000, 100 + i*50, 20, 20); ctx.fillStyle = ctx.fillStyle==="#000"?"#fff":"#000"; } for(let o of gameState.minigame.objects) { if(o.type === 'hay') ctx.fillStyle = "#f1c40f"; else ctx.fillStyle = "#555"; ctx.fillRect(o.x, o.y, o.w, o.h); if(o.type === 'hay') { ctx.strokeStyle = "#d4ac0d"; ctx.lineWidth=2; ctx.strokeRect(o.x, o.y, o.w, o.h); ctx.beginPath(); ctx.moveTo(o.x+5, o.y+5); ctx.lineTo(o.x+o.w-5, o.y+o.h-5); ctx.stroke(); } } for(let op of gameState.minigame.opponents) { drawRealisticHorse(ctx, op.x, op.y, op.color, false, false, (op.animFrame||0), true, 0, 1); } drawRealisticHorse(ctx, gameState.player.x, gameState.player.y, gameState.player.color, false, true, gameState.player.animFrame, true, 0, 1); ctx.restore(); }
+    function drawJump() { ctx.fillStyle = "#27ae60"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.save(); ctx.translate(100 - gameState.player.x, 0); ctx.fillStyle = "#c0392b"; ctx.fillRect(0, 480, 4500, 40); for(let f of gameState.minigame.objects) { ctx.fillStyle = f.cleared ? "#2ecc71" : "#fff"; ctx.fillRect(f.x, 400, 20, 100); ctx.fillStyle = "red"; ctx.fillRect(f.x, 400, 20, 10); } drawRealisticHorse(ctx, gameState.player.x, gameState.player.y, gameState.player.color, false, true, gameState.player.animFrame, true, gameState.player.z, 1); ctx.restore(); }
+    function drawDressage() { ctx.fillStyle = "#8e44ad"; ctx.fillRect(0,0,canvas.width,canvas.height); let targetY = canvas.height - 100; ctx.lineWidth = 8; ctx.strokeStyle = "#f1c40f"; ctx.beginPath(); ctx.arc(canvas.width/2, targetY, 45, 0, Math.PI*2); ctx.stroke(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(canvas.width/2, targetY, 48, 0, Math.PI*2); ctx.stroke(); ctx.textAlign = "center"; for(let a of gameState.minigame.objects) { ctx.font = "40px Arial"; ctx.fillStyle = a.hit ? "transparent" : "white"; let symbol = a.key === 'ArrowUp' ? '⬆️' : (a.key === 'ArrowDown' ? '⬇️' : (a.key==='ArrowLeft'?'⬅️':'➡️')); ctx.fillText(symbol, canvas.width/2, a.y); } if(gameState.minigame.feedbackText && gameState.minigame.feedbackText.alpha > 0) { ctx.font = "bold 60px Fredoka"; ctx.fillStyle = `rgba(255,255,255,${gameState.minigame.feedbackText.alpha})`; ctx.fillText(gameState.minigame.feedbackText.text, canvas.width/2, gameState.minigame.feedbackText.y); gameState.minigame.feedbackText.alpha -= 0.05; gameState.minigame.feedbackText.y -= 2; } let offX = gameState.minigame.dressageOffset.x; let offY = gameState.minigame.dressageOffset.y; let flip = false; if(offX < -10) flip = true; drawRealisticHorse(ctx, canvas.width/2 + offX, canvas.height/2 + 50 + offY, gameState.player.color, flip, true, gameState.player.animFrame, false, gameState.player.z, 1.2); }
 
-    function drawJump() {
-        ctx.fillStyle = "#27ae60"; ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.save(); ctx.translate(100 - gameState.player.x, 0);
-        ctx.fillStyle = "#c0392b"; ctx.fillRect(0, 480, 4500, 40);
-        for(let f of gameState.minigame.objects) { ctx.fillStyle = f.cleared ? "#2ecc71" : "#fff"; ctx.fillRect(f.x, 400, 20, 100); ctx.fillStyle = "red"; ctx.fillRect(f.x, 400, 20, 10); }
-        
-        drawRealisticHorse(ctx, gameState.player.x, gameState.player.y, gameState.player.color, false, true, gameState.player.animFrame, true, gameState.player.z, 1);
-        ctx.restore();
-    }
-
-    function drawDressage() {
-        ctx.fillStyle = "#8e44ad"; ctx.fillRect(0,0,canvas.width,canvas.height);
-        let targetY = canvas.height - 100; 
-        
-        // Target Ring
-        ctx.lineWidth = 8;
-        ctx.strokeStyle = "#f1c40f"; // Gold
-        ctx.beginPath(); ctx.arc(canvas.width/2, targetY, 45, 0, Math.PI*2); ctx.stroke();
-        ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(canvas.width/2, targetY, 48, 0, Math.PI*2); ctx.stroke();
-
-        ctx.textAlign = "center";
-        for(let a of gameState.minigame.objects) { ctx.font = "40px Arial"; ctx.fillStyle = a.hit ? "transparent" : "white"; let symbol = a.key === 'ArrowUp' ? '⬆️' : (a.key === 'ArrowDown' ? '⬇️' : (a.key==='ArrowLeft'?'⬅️':'➡️')); ctx.fillText(symbol, canvas.width/2, a.y); }
-        
-        // Feedback Text
-        if(gameState.minigame.feedbackText && gameState.minigame.feedbackText.alpha > 0) {
-            ctx.font = "bold 60px Fredoka"; 
-            ctx.fillStyle = `rgba(255,255,255,${gameState.minigame.feedbackText.alpha})`;
-            ctx.fillText(gameState.minigame.feedbackText.text, canvas.width/2, gameState.minigame.feedbackText.y);
-            gameState.minigame.feedbackText.alpha -= 0.05;
-            gameState.minigame.feedbackText.y -= 2;
-        }
-
-        // Use offset to simulate dance moves
-        let offX = gameState.minigame.dressageOffset.x;
-        let offY = gameState.minigame.dressageOffset.y;
-        
-        // Correct Flip based on input direction
-        let flip = false;
-        if(offX < -10) flip = true; 
-        
-        drawRealisticHorse(ctx, canvas.width/2 + offX, canvas.height/2 + 50 + offY, gameState.player.color, flip, true, gameState.player.animFrame, false, gameState.player.z, 1.2);
-    }
-
-    // --- High Quality Render Functions ---
     function drawRealisticHorse(ctx, x, y, color, flip, isPlayer, animFrame, isMoving, z=0, scale=1) { 
         ctx.save(); ctx.translate(x, y - z); ctx.scale(scale, scale); if(flip) ctx.scale(-1, 1); 
-        let hop = isMoving ? Math.sin(animFrame)*3 : 0; let rl = isMoving ? Math.sin(animFrame) : 0; let fl = isMoving ? Math.sin(animFrame+Math.PI) : 0; let hb = isMoving ? Math.sin(animFrame*1.5)*2 : Math.sin(Date.now()/600)*2; ctx.translate(0, hop); 
+        let hop = isMoving ? Math.sin(animFrame)*3 : 0; let rl = isMoving ? Math.sin(animFrame) : 0; let fl = isMoving ? Math.sin(animFrame+Math.PI) : 0; let hb = isMoving ? Math.sin(animFrame*1.5)*2 : Math.sin(Date.now()/600)*2; 
+        ctx.translate(0, hop); 
         if(z < 50) { ctx.fillStyle = `rgba(0,0,0,${0.2 - z/200})`; ctx.beginPath(); ctx.ellipse(0, 50-hop+z, 25, 6, 0, 0, Math.PI*2); ctx.fill(); } 
         ctx.fillStyle = color; ctx.strokeStyle = color; ctx.lineJoin = "round"; ctx.lineCap = "round"; ctx.lineWidth = 8; 
-        ctx.beginPath(); ctx.moveTo(-20, 10); ctx.quadraticCurveTo(-25+rl*10, 25, -22+rl*15, 35); ctx.lineTo(-22+rl*18, 50); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(-24+rl*18, 50, 6, 4); ctx.fill(); ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(20, 10); ctx.quadraticCurveTo(25+fl*10, 25, 22+fl*12, 35); ctx.lineTo(22+fl*15, 50); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(20+fl*15, 50, 6, 4); ctx.fill(); 
+        ctx.beginPath(); ctx.moveTo(-20, 10); ctx.quadraticCurveTo(-25+rl*10, 25, -22+rl*15, 35); ctx.lineTo(-22+rl*18, 50); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(-24+rl*18, 50, 6, 4); ctx.fill(); 
+        ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(20, 10); ctx.quadraticCurveTo(25+fl*10, 25, 22+fl*12, 35); ctx.lineTo(22+fl*15, 50); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(20+fl*15, 50, 6, 4); ctx.fill(); 
         ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(25, 5); ctx.bezierCurveTo(30, 20, 10, 25, -10, 22); ctx.bezierCurveTo(-30, 20, -35, 5, -25, -5); ctx.bezierCurveTo(-15, -10, 10, -10, 25, 5); ctx.fill(); 
         if(isPlayer && gameState.player.outfit.saddlePad) { ctx.fillStyle = gameState.player.outfit.saddlePad; ctx.beginPath(); ctx.moveTo(5, -5); ctx.lineTo(15, 10); ctx.lineTo(-10, 12); ctx.lineTo(-15, -5); ctx.fill(); } 
         let rl2 = isMoving ? Math.sin(animFrame+Math.PI) : 0; ctx.strokeStyle = color; ctx.beginPath(); ctx.moveTo(-15, 10); ctx.quadraticCurveTo(-20+rl2*10, 25, -17+rl2*15, 35); ctx.lineTo(-17+rl2*18, 52); ctx.stroke(); ctx.fillStyle = "#1a1a1a"; ctx.beginPath(); ctx.fillRect(-19+rl2*18, 52, 6, 4); ctx.fill(); 
@@ -1217,11 +716,41 @@
         ctx.restore(); 
     }
     
-    function drawTree(t) { let color = seasons[gameState.seasonIndex].treeColor; if(gameState.weather==='snow') color = "#bdc3c7"; else if(gameState.weather==='rain') color = "#1e8449"; ctx.fillStyle = "#795548"; ctx.beginPath(); ctx.rect(t.x-8, t.y, 16, 20); ctx.fill(); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(t.x, t.y-30, t.size/2, 0, Math.PI*2); ctx.fill(); if(gameState.weather !== 'snow' && t.apples && t.apples.length > 0) { ctx.fillStyle = "#c0392b"; t.apples.forEach(a => { ctx.beginPath(); ctx.arc(t.x+a.ox, t.y-30+a.oy, 5, 0, Math.PI*2); ctx.fill(); }); } }
+    function drawTree(t) { 
+        let color = seasons[gameState.seasonIndex].treeColor; if(gameState.weather==='snow') color = "#bdc3c7"; else if(gameState.weather==='rain') color = "#1e8449"; 
+        if(t.type === 'crystal') color = "#5B2C6F"; // Crystal tree
+        ctx.fillStyle = "#795548"; ctx.beginPath(); ctx.rect(t.x-8, t.y, 16, 20); ctx.fill(); ctx.fillStyle = color; ctx.beginPath(); ctx.arc(t.x, t.y-30, t.size/2, 0, Math.PI*2); ctx.fill(); 
+        if(gameState.weather !== 'snow' && t.apples && t.apples.length > 0) { ctx.fillStyle = "#c0392b"; t.apples.forEach(a => { ctx.beginPath(); ctx.arc(t.x+a.ox, t.y-30+a.oy, 5, 0, Math.PI*2); ctx.fill(); }); } 
+    }
+    
     function drawGardenBed(ctx, b) { ctx.fillStyle = b.watered ? "#5d4037" : "#8d6e63"; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeStyle = "#4e342e"; ctx.lineWidth=2; ctx.strokeRect(b.x, b.y, b.w, b.h); if(b.plant) { let emoji = "🌱"; if(b.growth > 30) emoji = "🌿"; if(b.growth >= 100) emoji = b.plant === 'Apfel' ? "🍎" : "🥕"; ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(emoji, b.x + b.w/2, b.y + b.h/2); if(b.growth < 100) { ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(b.x+5, b.y+b.h-10, b.w-10, 5); ctx.fillStyle = "#2ecc71"; ctx.fillRect(b.x+5, b.y+b.h-10, (b.w-10)*(b.growth/100), 5); } } }
     function drawHouse(ctx, h) { ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(h.x+5, h.y+h.h-5, h.w, 10); ctx.fillStyle = "#ecf0f1"; ctx.fillRect(h.x, h.y, h.w, h.h); ctx.fillStyle = "#5d4037"; ctx.fillRect(h.x, h.y, 10, h.h); ctx.fillRect(h.x+h.w-10, h.y, 10, h.h); ctx.fillRect(h.x, h.y, h.w, 10); ctx.fillRect(h.x, h.y+h.h-10, h.w, 10); ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(h.x+h.w, h.y+h.h); ctx.strokeStyle="#5d4037"; ctx.lineWidth=5; ctx.stroke(); ctx.beginPath(); ctx.moveTo(h.x+h.w, h.y); ctx.lineTo(h.x, h.y+h.h); ctx.stroke(); ctx.fillStyle = "#c0392b"; ctx.beginPath(); ctx.moveTo(h.x-10, h.y); ctx.lineTo(h.x + h.w/2, h.y - 60); ctx.lineTo(h.x + h.w + 10, h.y); ctx.fill(); ctx.fillStyle = "#3e2723"; ctx.fillRect(h.x + h.w/2 - 15, h.y + h.h - 40, 30, 40); ctx.fillStyle = "#8d6e63"; ctx.fillRect(h.x + h.w/2 - 30, h.y - 20, 60, 20); ctx.fillStyle = "#fff"; ctx.font = "12px Fredoka"; ctx.textAlign = "center"; ctx.fillText("Gute Nacht", h.x + h.w/2, h.y - 6); }
     function drawChicken(ctx, c) { ctx.save(); ctx.translate(c.x, c.y); if(c.vx < 0) ctx.scale(-1, 1); let bounce = c.panic > 0 ? Math.sin(Date.now()/50)*5 : Math.abs(Math.sin(Date.now()/200))*2; ctx.translate(0, -bounce); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 0, 10, 8, 0, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.moveTo(-8, -2); ctx.lineTo(-12, -8); ctx.lineTo(-10, -2); ctx.fill(); ctx.beginPath(); ctx.arc(6, -6, 5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.ellipse(6, -10, 3, 2, 0, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(8, -4, 2, 3, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#f39c12"; ctx.beginPath(); ctx.moveTo(9, -7); ctx.lineTo(13, -5); ctx.lineTo(9, -3); ctx.fill(); ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(7, -7, 1, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#ddd"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI, false); ctx.stroke(); ctx.restore(); }
     function drawDog(ctx, d) { ctx.save(); ctx.translate(d.x, d.y); if(d.flip) ctx.scale(-1, 1); let l = Math.sin(d.anim)*4; let headBob = Math.abs(Math.sin(d.anim*2))*2; let tailWag = Math.sin(d.anim*3)*0.5; ctx.strokeStyle = "#e5e5e5"; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5-l, 20); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10+l, 20); ctx.stroke(); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 5, 14, 8, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.arc(-5, 2, 4, 0, Math.PI*2); ctx.fill(); ctx.save(); ctx.translate(12, 0); ctx.rotate(-0.5 + tailWag); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, -6, 2, 6, 0, 0, Math.PI*2); ctx.fill(); ctx.restore(); ctx.strokeStyle = "red"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-8, 5); ctx.lineTo(-8, -5); ctx.stroke(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5+l, 20); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10-l, 20); ctx.stroke(); ctx.save(); ctx.translate(-12, -8 + headBob); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.ellipse(-2, -6, 3, 6, -0.5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(6, -4, 3, 6, 0.5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.arc(-3, -2, 4, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(-8, 1, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(-3, -2, 1.5, 0, Math.PI*2); ctx.fill(); ctx.restore(); ctx.restore(); }
+    
+    function drawCat(ctx, c) {
+        ctx.save(); ctx.translate(c.x, c.y); if(c.flip) ctx.scale(-1, 1);
+        let l = Math.sin(c.anim)*2; let tail = Math.sin(Date.now()/200)*0.5;
+        // Body
+        ctx.fillStyle = "#E67E22"; ctx.beginPath(); ctx.ellipse(0, 5, 12, 7, 0, 0, Math.PI*2); ctx.fill();
+        // Legs
+        ctx.strokeStyle = "#E67E22"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(-6, 8); ctx.lineTo(-6+l, 18); ctx.stroke(); ctx.beginPath(); ctx.moveTo(6, 8); ctx.lineTo(6-l, 18); ctx.stroke();
+        // Head
+        ctx.translate(-10, -5); ctx.beginPath(); ctx.arc(0,0, 8, 0, Math.PI*2); ctx.fill();
+        // Ears
+        ctx.beginPath(); ctx.moveTo(-5,-5); ctx.lineTo(-8,-12); ctx.lineTo(0,-8); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(5,-5); ctx.lineTo(8,-12); ctx.lineTo(0,-8); ctx.fill();
+        // Tail
+        ctx.translate(20, 5); ctx.rotate(tail); ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(10, -10, 15, -5); ctx.stroke();
+        ctx.restore();
+    }
+    function drawMouse(ctx, m) {
+        ctx.save(); ctx.translate(m.x, m.y);
+        ctx.fillStyle = "#95a5a6"; ctx.beginPath(); ctx.ellipse(0, 0, 5, 3, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(-3, -1, 1, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    }
+    
     function drawJoystick() { ctx.beginPath(); ctx.arc(joy.baseX, joy.baseY, joy.radius, 0, Math.PI*2); ctx.fillStyle="rgba(255,255,255,0.2)"; ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 4; ctx.fill(); ctx.stroke(); let x = joy.active ? joy.stickX : joy.baseX; let y = joy.active ? joy.stickY : joy.baseY; ctx.beginPath(); ctx.arc(x, y, 25, 0, Math.PI*2); ctx.fillStyle = "white"; ctx.fill(); }
     function createParticles(x, y, char, count) { for(let i=0; i<count; i++) gameState.particles.push({x:x+(Math.random()-0.5)*40, y:y, char:char, life:1.0}); }
     function changeZoom(d) { gameState.zoom = Math.max(0.5, Math.min(2.0, gameState.zoom + d)); }
@@ -1235,113 +764,33 @@
         let m = Math.floor((gameState.time * 24 * 60) % 60); 
         document.getElementById('clock-display').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`; 
         document.getElementById('stamina-bar').style.width = gameState.player.stamina + '%'; 
+        document.getElementById('season-display').innerText = seasons[gameState.seasonIndex].name;
     }
 
     function updateQuestUI() { 
-        // --- FIX: HIDE IF MINIGAME ---
-        if(gameState.mode !== MODES.WORLD) {
-            document.getElementById('quest-box').style.display = 'none';
-            return;
-        }
-
-        const h = gameState.quest.horse; 
-        const box = document.getElementById('quest-box'); 
-        const text = document.getElementById('quest-text'); 
-        if(!h) { 
-            text.innerText = "Alle zufrieden!"; 
-            box.style.borderLeftColor = "#ccc"; 
-            box.style.display = 'block'; 
-            setTimeout(() => { if(!gameState.quest.horse) box.style.display = 'none'; }, 3000); 
-            return; 
-        } 
+        if(gameState.mode !== MODES.WORLD) { document.getElementById('quest-box').style.display = 'none'; return; }
+        const h = gameState.quest.horse; const box = document.getElementById('quest-box'); const text = document.getElementById('quest-text'); 
+        if(!h) { text.innerText = "Alle zufrieden!"; box.style.borderLeftColor = "#ccc"; box.style.display = 'block'; setTimeout(() => { if(!gameState.quest.horse) box.style.display = 'none'; }, 3000); return; } 
         box.style.display = 'block'; 
-        if(gameState.inventory && gameState.inventory.name === h.want.name) { 
-            text.innerHTML = `Gib <b>${h.want.name}</b> ab!`; 
-            box.style.borderLeftColor = "#2ecc71"; 
-        } else { 
-            text.innerHTML = `Ein Pferd möchte:<br><b>${h.want.name}</b> ${h.want.emoji}`; 
-            box.style.borderLeftColor = "#FFD700"; 
-        } 
+        if(gameState.inventory && gameState.inventory.name === h.want.name) { text.innerHTML = `Gib <b>${h.want.name}</b> ab!`; box.style.borderLeftColor = "#2ecc71"; } else { text.innerHTML = `Ein Pferd möchte:<br><b>${h.want.name}</b> ${h.want.emoji}`; box.style.borderLeftColor = "#FFD700"; } 
     }
 
-    // --- Robust Inputs (Fix for Sticky Keys on Shift) ---
-    function handleMobileJump() { keys.Space=true; setTimeout(()=>keys.Space=false, 150); }
-    
-    window.addEventListener('keydown', e => {
-        // Prevent default scrolling for game keys
-        if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault();
-        
-        // Map Codes to Game Keys (Code is case-insensitive/layout invariant)
-        if(e.code === 'KeyW') keys.w = true;
-        if(e.code === 'KeyA') keys.a = true;
-        if(e.code === 'KeyS') keys.s = true;
-        if(e.code === 'KeyD') keys.d = true;
-        if(e.key === 'Shift') keys.Shift = true; // Shift is usually reliable via key
-        if(e.code === 'Space') keys.Space = true;
-        
-        // Arrows
-        if(e.code === 'ArrowUp') keys.ArrowUp = true;
-        if(e.code === 'ArrowDown') keys.ArrowDown = true;
-        if(e.code === 'ArrowLeft') keys.ArrowLeft = true;
-        if(e.code === 'ArrowRight') keys.ArrowRight = true;
-
-        // One-shot actions
-        if(e.code === 'KeyQ' || e.code === 'KeyX') interact();
-        
-        // Debug
-        // document.getElementById('input-debug').innerText="Key: "+e.code; 
-    });
-
-    window.addEventListener('keyup', e => {
-        // Map Codes to Game Keys
-        if(e.code === 'KeyW') keys.w = false;
-        if(e.code === 'KeyA') keys.a = false;
-        if(e.code === 'KeyS') keys.s = false;
-        if(e.code === 'KeyD') keys.d = false;
-        if(e.key === 'Shift') keys.Shift = false;
-        if(e.code === 'Space') keys.Space = false;
-        
-        // Arrows
-        if(e.code === 'ArrowUp') keys.ArrowUp = false;
-        if(e.code === 'ArrowDown') keys.ArrowDown = false;
-        if(e.code === 'ArrowLeft') keys.ArrowLeft = false;
-        if(e.code === 'ArrowRight') keys.ArrowRight = false;
-    });
-
+    // --- Helper UI Functions ---
     function closeModals() { document.querySelectorAll('.overlay').forEach(el => el.style.display = 'none'); }
     function openCustomize() { document.getElementById('customize-modal').style.display='flex'; updateCustomizeUI(); }
     function openShop() { document.getElementById('shop-modal').style.display='flex'; document.getElementById('shop-stars').innerText=gameState.stars; }
-    function updateCustomizeUI() { 
-        const setup = (id, list, curr, setter) => { const c=document.getElementById(id); c.innerHTML=''; list.forEach(val => { let d=document.createElement('div'); d.className='color-swatch'+(curr===val?' selected':''); d.style.background=val||'#ccc'; d.onclick=()=>{setter(val);Sound.playPop();updateCustomizeUI();}; c.appendChild(d); }); };
-        setup('coat-colors', ['#654321','#212121','#eeeeee','#d7ccc8'], gameState.player.color, v=>gameState.player.color=v);
-        setup('mane-colors', ['#2c2c2c','#eeeeee','#8B4513'], gameState.player.maneColor, v=>gameState.player.maneColor=v);
-        setup('pad-colors', ['#ffffff','#e74c3c','#3498db','#f1c40f'], gameState.player.outfit.saddlePad, v=>gameState.player.outfit.saddlePad=v);
-        setup('ribbon-colors', [null,'#e74c3c','#3498db'], gameState.player.outfit.ribbon, v=>gameState.player.outfit.ribbon=v);
-    }
+    function updateCustomizeUI() { const setup = (id, list, curr, setter) => { const c=document.getElementById(id); c.innerHTML=''; list.forEach(val => { let d=document.createElement('div'); d.className='color-swatch'+(curr===val?' selected':''); d.style.background=val||'#ccc'; d.onclick=()=>{setter(val);Sound.playPop();updateCustomizeUI();}; c.appendChild(d); }); }; setup('coat-colors', ['#654321','#212121','#eeeeee','#d7ccc8'], gameState.player.color, v=>gameState.player.color=v); setup('mane-colors', ['#2c2c2c','#eeeeee','#8B4513'], gameState.player.maneColor, v=>gameState.player.maneColor=v); setup('pad-colors', ['#ffffff','#e74c3c','#3498db','#f1c40f'], gameState.player.outfit.saddlePad, v=>gameState.player.outfit.saddlePad=v); setup('ribbon-colors', [null,'#e74c3c','#3498db'], gameState.player.outfit.ribbon, v=>gameState.player.outfit.ribbon=v); }
     function initShop() { const grid = document.getElementById('shop-grid'); grid.innerHTML = ""; shopItems.forEach(item => { let div = document.createElement('div'); div.className = 'shop-item'; div.innerHTML = `<span style="font-size:30px">${item.emoji}</span><b>${item.name}</b><span>⭐ ${item.cost}</span>`; div.onclick = () => buyItem(item); grid.appendChild(div); }); }
     function buyItem(item) { if(gameState.stars >= item.cost) { gameState.stars -= item.cost; Sound.playSuccess(); gameState.entities.decorations.push({ x: gameState.player.x + (Math.random()-0.5)*100, y: gameState.player.y + (Math.random()-0.5)*100, emoji: item.emoji }); updateUI(); closeModals(); } else { alert("Nicht genug Sterne!"); } }
+    function handleMobileJump() { keys.Space=true; setTimeout(()=>keys.Space=false, 150); }
 
-    window.addEventListener('resize', resize); resize(); initUI();
-    
-    // EXPOSE TO WINDOW FOR HTML ONCLICK
-    window.startGame = startGame;
-    window.toggleSound = toggleSound;
-    window.dropItem = dropItem;
-    window.openCustomize = openCustomize;
-    window.openShop = openShop;
-    window.toggleTrainingMenu = toggleTrainingMenu;
-    window.changeZoom = changeZoom;
-    window.commandFoal = commandFoal;
-    window.handleMobileJump = handleMobileJump;
-    window.interact = interact;
-    window.closeModals = closeModals;
-    window.startMinigame = startMinigame;
-    window.returnToFarm = returnToFarm;
-    window.submitHighscore = submitHighscore;
-    window.handleDressageInput = handleDressageInput;
-    window.handleJumpInput = handleJumpInput;
-    
-    console.log("Pferdehof Deluxe v4.2: Firebase Auth Fix & Mobile Controls Cleaned");
+    window.addEventListener('keydown', e => { if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault(); if(e.code === 'KeyW') keys.w = true; if(e.code === 'KeyA') keys.a = true; if(e.code === 'KeyS') keys.s = true; if(e.code === 'KeyD') keys.d = true; if(e.key === 'Shift') keys.Shift = true; if(e.code === 'Space') keys.Space = true; if(e.code === 'ArrowUp') keys.ArrowUp = true; if(e.code === 'ArrowDown') keys.ArrowDown = true; if(e.code === 'ArrowLeft') keys.ArrowLeft = true; if(e.code === 'ArrowRight') keys.ArrowRight = true; if(e.code === 'KeyQ' || e.code === 'KeyX') interact(); });
+    window.addEventListener('keyup', e => { if(e.code === 'KeyW') keys.w = false; if(e.code === 'KeyA') keys.a = false; if(e.code === 'KeyS') keys.s = false; if(e.code === 'KeyD') keys.d = false; if(e.key === 'Shift') keys.Shift = false; if(e.code === 'Space') keys.Space = false; if(e.code === 'ArrowUp') keys.ArrowUp = false; if(e.code === 'ArrowDown') keys.ArrowDown = false; if(e.code === 'ArrowLeft') keys.ArrowLeft = false; if(e.code === 'ArrowRight') keys.ArrowRight = false; });
+
+    window.startGame = startGame; window.toggleSound = toggleSound; window.dropItem = dropItem; window.openCustomize = openCustomize; window.openShop = openShop; window.toggleTrainingMenu = toggleTrainingMenu; window.changeZoom = changeZoom; window.commandFoal = commandFoal; window.handleMobileJump = handleMobileJump; window.interact = interact; window.closeModals = closeModals; window.startMinigame = startMinigame; window.returnToFarm = returnToFarm; window.submitHighscore = submitHighscore; window.handleDressageInput = handleDressageInput; window.handleJumpInput = handleJumpInput;
+
+    window.addEventListener('resize', resize); resize(); try { initUI(); } catch(e) { console.error("UI Init Error:", e); }
+    console.log("Pferdehof Deluxe v5.0: New Areas Added");
 </script>
 </body>
 </html>
