@@ -20,8 +20,9 @@
         .hud-row { display: flex; align-items: center; gap: 10px; }
         .hud-item { background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 25px; display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2); }
         
-        #stamina-container { width: 150px; height: 10px; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3); margin-top: 5px; }
+        .bar-container { width: 150px; height: 10px; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.3); margin-top: 2px; }
         #stamina-bar { width: 100%; height: 100%; background: #f1c40f; transition: width 0.1s; }
+        #hydration-bar { width: 100%; height: 100%; background: #3498db; transition: width 0.1s; }
         
         /* Minigame HUD */
         #minigame-hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; pointer-events: none; }
@@ -38,6 +39,7 @@
         @keyframes pulse { 0% { transform: translateX(-50%) scale(1); } 50% { transform: translateX(-50%) scale(1.1); } 100% { transform: translateX(-50%) scale(1); } }
 
         #sleep-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; opacity: 0; pointer-events: none; transition: opacity 1s; display: flex; justify-content: center; align-items: center; color: white; font-size: 40px; z-index: 200; }
+        #storm-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 150; transition: opacity 0.1s; }
 
         button { pointer-events: auto; border: none; border-radius: 50px; font-family: 'Fredoka', sans-serif; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s; }
         button:active { transform: translateY(4px); box-shadow: none; }
@@ -102,7 +104,10 @@
                 <button id="drop-btn" onclick="dropItem()">❌</button>
             </div>
             <div class="hud-item"><span>⭐</span> <span id="star-display">0</span></div>
-            <div id="stamina-container"><div id="stamina-bar"></div></div>
+            
+            <!-- Bars -->
+            <div class="bar-container" title="Ausdauer"><div id="stamina-bar"></div></div>
+            <div id="hydration-container" class="bar-container" title="Wasser/Durst" style="margin-top:2px;"><div id="hydration-bar"></div></div>
         </div>
         
         <div id="minigame-hud">
@@ -123,6 +128,8 @@
         <div id="groom-hint" class="context-hint">👋 Wischen zum Putzen!</div>
         <div id="garden-hint" class="context-hint">🌱 Aktion möglich</div>
         <div id="tourney-hint" class="context-hint">🏆 Zum Turnier (Leertaste oder Klick)</div>
+        <div id="calm-hint" class="context-hint" style="background:rgba(231,76,60,0.8);">😰 Pferd beruhigen!</div>
+        <div id="drink-hint" class="context-hint" style="background:rgba(52,152,219,0.8);">💧 Trinken!</div>
 
         <div class="hud-right">
             <button id="sound-btn" class="icon-btn btn-purple" onclick="toggleSound()">🔊</button>
@@ -155,11 +162,13 @@
     </div>
     
     <div id="sleep-overlay">Gute Nacht! 🌙</div>
+    <div id="storm-overlay"></div>
 
     <!-- Start / Level Screen -->
     <div id="level-screen" class="overlay" style="display:flex;">
         <h1 style="color:#FFD700; font-size:40px; margin-bottom:10px;">Pferdehof Deluxe</h1>
         <p>Garten, Tiere & Turniere!</p>
+        <p style="color:#f39c12; font-size:16px;">Neu: ⛈️ Sturm & ☀️ Hitze!</p>
         <div id="controls-hint" style="margin:20px 0; color:#ddd;"></div>
         <button onclick="startGame()" style="background:#27ae60; color:white; padding:15px 50px; font-size:24px;">Losreiten</button>
     </div>
@@ -312,7 +321,6 @@
     canvas.setAttribute('tabindex', '0'); 
     const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
     
-    // --- UPDATED MAP SIZE ---
     const WORLD_W = 4000, WORLD_H = 2500;
     const MODES = { WORLD: 0, RACE: 1, JUMP: 2, DRESSAGE: 3, FOAL_SCHOOL: 4 };
     const itemTypes = { apple: { name: "Apfel", emoji: "🍎", color: "#ff4d4d", plantable: true }, carrot: { name: "Möhre", emoji: "🥕", color: "#ffa500", plantable: true }, water: { name: "Wasser", emoji: "💧", color: "#3498db" }, brush: { name: "Bürste", emoji: "🧹", color: "#95a5a6" }, hay: { name: "Heu", emoji: "🌾", color: "#f1c40f" } };
@@ -320,11 +328,11 @@
     const shopItems = [ { id: 'flower_red', name: 'Rote Blumen', cost: 2, type: 'deco', emoji: '🌹' }, { id: 'flower_blue', name: 'Blaue Blumen', cost: 2, type: 'deco', emoji: '💠' }, { id: 'fountain', name: 'Brunnen', cost: 5, type: 'deco', emoji: '⛲' }, { id: 'bench', name: 'Bank', cost: 3, type: 'deco', emoji: '🪑' } ];
 
     var gameState = {
-        mode: MODES.WORLD, running: false, level: 0, stars: 0, time: 0.25, dayDuration: 12000, weather: 'sunny', weatherTimer: 0, seasonIndex: 0,
+        mode: MODES.WORLD, running: false, level: 0, stars: 0, time: 0.25, dayDuration: 12000, weather: 'sunny', weatherTimer: 0, seasonIndex: 0, lightningTimer: 0,
         entities: { horses: [], items: [], decorations: [], dogs: [], ducks: [], chickens: [], leafPiles: [], cats: [], mice: [] },
         terrain: { riverPoints: [], fields: [], trees: [], obstacles: [], fences: [], house: null, beds: [], shells: [], crystals: [] },
         inventory: null, particles: [], footprints: [], camX: 0, camY: 0, zoom: 1.0,
-        player: { x: 600, y: 600, z: 0, vz: 0, vx: 0, vy: 0, speed: 6, maxStamina: 100, stamina: 100, color: '#654321', maneColor: '#2c2c2c', flip: false, animFrame: 0, outfit: { saddlePad: '#ffffff', ribbon: null } },
+        player: { x: 600, y: 600, z: 0, vz: 0, vx: 0, vy: 0, speed: 6, maxStamina: 100, stamina: 100, hydration: 100, color: '#654321', maneColor: '#2c2c2c', flip: false, animFrame: 0, outfit: { saddlePad: '#ffffff', ribbon: null } },
         quest: { horse: null }, grooming: { active: false, progress: 0, targetHorse: null }, training: { active: false, targetFoal: null, menuOpen: false }, sleeping: false,
         minigame: { active: false, score: 0, timer: 0, objects: [], opponents: [], state: 'warmup', countdown: 3, dressageOffset: {x:0, y:0}, feedbackText: null, foalSchool: { trickWanted: null, trickTimer: 0, foal: null } }
     };
@@ -360,10 +368,11 @@
 
     function generateWorld() {
         gameState.mode = MODES.WORLD; gameState.time = 0.25; gameState.player.x = 600; gameState.player.y = 600; gameState.player.speed = 6; 
+        gameState.player.hydration = 100; // Reset Hydration
+        
         gameState.entities.horses = []; gameState.entities.items = []; gameState.entities.leafPiles = [];
         gameState.entities.dogs = [{x: 1300, y: 1050, vx:0, vy:0, flip: false, anim:0, state:'follow', timer: 500, tx:0, ty:0}];
         gameState.entities.ducks = []; gameState.entities.chickens = [];
-        // NEW ENTITIES
         gameState.entities.cats = [{x: 350, y: 350, vx:0, vy:0, flip: false, anim:0, state:'idle', timer: 100, target: null}];
         gameState.entities.mice = [];
         for(let i=0; i<8; i++) gameState.entities.mice.push({x: 500+Math.random()*1000, y: 500+Math.random()*1000, vx:0, vy:0, timer:0});
@@ -392,13 +401,13 @@
             }
         }
         
-        // BEACH GENERATION (Right side)
+        // BEACH GENERATION
         for(let i=0; i<40; i++) {
             let x = 2800 + Math.random()*1000; let y = Math.random()*2000;
             gameState.terrain.shells.push({x:x, y:y, type: Math.random()>0.5 ? '🐚' : '⭐'});
         }
 
-        // CRYSTAL FOREST GENERATION (Bottom side)
+        // CRYSTAL FOREST
         for(let i=0; i<30; i++) {
             let x = 100 + Math.random()*3800; let y = 2100 + Math.random()*350;
             gameState.terrain.crystals.push({x:x, y:y, color: Math.random()>0.5 ? '#9b59b6' : '#3498db'});
@@ -458,7 +467,30 @@
     function updateWorld() {
         if(!gameState.sleeping) {
             gameState.time += 1/gameState.dayDuration; if(gameState.time >= 1) gameState.time = 0;
-            gameState.weatherTimer++; if(gameState.weatherTimer > 3000) { gameState.weatherTimer = 0; let nextS = (gameState.seasonIndex + 1) % 4; updateSeason(nextS); const r = Math.random(); if(r < 0.6) gameState.weather = 'sunny'; else if(r < 0.9) gameState.weather = 'rain'; else gameState.weather = 'snow'; }
+            gameState.weatherTimer++; 
+            if(gameState.weatherTimer > 3000) { 
+                gameState.weatherTimer = 0; 
+                // Season change only if cycled fully? Let's just random weather for now
+                if(gameState.time < 0.1) { // Change season at start of day mainly
+                     // let nextS = (gameState.seasonIndex + 1) % 4; updateSeason(nextS); 
+                }
+                const r = Math.random(); 
+                if(r < 0.4) gameState.weather = 'sunny'; 
+                else if(r < 0.7) gameState.weather = 'rain'; 
+                else if(r < 0.8) gameState.weather = 'storm'; // 10% Storm
+                else gameState.weather = 'cloudy';
+                
+                if(seasons[gameState.seasonIndex].name === 'Winter' && gameState.weather === 'rain') gameState.weather = 'snow';
+            }
+
+            // Storm Lightning Logic
+            if(gameState.weather === 'storm') {
+                if(Math.random() < 0.005) { // Random lightning strike
+                    gameState.lightningTimer = 10;
+                    Sound.playNoise(0.5); // Thunder
+                }
+            }
+            if(gameState.lightningTimer > 0) gameState.lightningTimer--;
 
             handlePlayerMovement();
             updateHorses(); updateDog(); updateDucks(); updateChickens(); updateGarden(); updateCat(); updateMice();
@@ -483,12 +515,33 @@
     // Entity Updates
     function updateHorses() {
         gameState.entities.horses.forEach(h => {
+            // Panic Logic for Storm
+            if(gameState.weather === 'storm' && h.state !== 'panic' && !h.isFoal) {
+                if(Math.random() < 0.005) h.state = 'panic';
+            }
+            if(gameState.weather !== 'storm' && h.state === 'panic') h.state = 'idle'; // Calm down if storm ends
+
             if(h.isFoal && h.parent) {
                 let dist = Math.hypot(h.x - h.parent.x, h.y - h.parent.y);
                 if(dist > 60) { let angle = Math.atan2(h.parent.y - h.y, h.parent.x - h.x); h.x += Math.cos(angle) * 3; h.y += Math.sin(angle) * 3; h.flip = Math.cos(angle) < 0; h.anim += 0.2; } else { h.anim = 0; if(Math.random() < 0.01) h.flip = !h.flip; }
                 return;
             }
-            if(h.state === 'idle') { h.timer++; if(h.timer > 100 + Math.random()*200) { h.state = 'walk'; h.tx = h.x + (Math.random()-0.5)*300; h.ty = h.y + (Math.random()-0.5)*300; h.tx = Math.max(100, Math.min(2500-100, h.tx)); h.ty = Math.max(100, Math.min(2000-100, h.ty)); h.timer = 0; } } 
+
+            if(h.state === 'panic') {
+                // Erratic fast movement
+                if(Math.random() < 0.1) {
+                    h.tx = h.x + (Math.random()-0.5)*500;
+                    h.ty = h.y + (Math.random()-0.5)*500;
+                }
+                let angle = Math.atan2(h.ty - h.y, h.tx - h.x);
+                h.x += Math.cos(angle) * 6; // Fast!
+                h.y += Math.sin(angle) * 6;
+                h.flip = Math.cos(angle) < 0;
+                h.anim += 0.5;
+                h.x = Math.max(100, Math.min(WORLD_W-100, h.x));
+                h.y = Math.max(100, Math.min(WORLD_H-100, h.y));
+            }
+            else if(h.state === 'idle') { h.timer++; if(h.timer > 100 + Math.random()*200) { h.state = 'walk'; h.tx = h.x + (Math.random()-0.5)*300; h.ty = h.y + (Math.random()-0.5)*300; h.tx = Math.max(100, Math.min(2500-100, h.tx)); h.ty = Math.max(100, Math.min(2000-100, h.ty)); h.timer = 0; } } 
             else if(h.state === 'walk') { let angle = Math.atan2(h.ty - h.y, h.tx - h.x); h.x += Math.cos(angle) * 2; h.y += Math.sin(angle) * 2; h.flip = Math.cos(angle) < 0; h.anim += 0.15; if(Math.hypot(h.tx - h.x, h.ty - h.y) < 10) { h.state = 'idle'; h.anim = 0; } }
         });
     }
@@ -499,7 +552,6 @@
 
     function updateCat() {
         gameState.entities.cats.forEach(c => {
-            // Find nearest mouse
             let nearestMouse = null; let minD = 400;
             gameState.entities.mice.forEach(m => { let d = Math.hypot(c.x-m.x, c.y-m.y); if(d<minD) { minD=d; nearestMouse=m; } });
             
@@ -508,15 +560,11 @@
                 c.x += Math.cos(angle) * 3.5; c.y += Math.sin(angle) * 3.5;
                 c.flip = Math.cos(angle) < 0; c.anim += 0.4;
                 if(minD < 10) { 
-                    // CATCH!
                     gameState.entities.mice = gameState.entities.mice.filter(m => m !== nearestMouse);
                     Sound.playMeow(); createParticles(c.x, c.y, "🐭", 1); createParticles(c.x, c.y, "❤️", 3);
-                    // Spawn new mouse elsewhere
                     gameState.entities.mice.push({x: 500+Math.random()*1500, y: 500+Math.random()*1500, vx:0, vy:0, timer:0});
                 }
-            } else {
-                c.anim = 0; // Idle if no mouse nearby
-            }
+            } else { c.anim = 0; }
         });
     }
 
@@ -524,7 +572,6 @@
         gameState.entities.mice.forEach(m => {
             if(m.timer <= 0) { m.vx = (Math.random()-0.5)*3; m.vy = (Math.random()-0.5)*3; m.timer = 30 + Math.random()*50; }
             m.x += m.vx; m.y += m.vy; m.timer--;
-            // Run away from player
             if(Math.hypot(m.x - gameState.player.x, m.y - gameState.player.y) < 60) {
                 let angle = Math.atan2(gameState.player.y - m.y, gameState.player.x - m.x);
                 m.x -= Math.cos(angle)*4; m.y -= Math.sin(angle)*4;
@@ -536,12 +583,37 @@
         const p = gameState.player; let dx = 0, dy = 0;
         if(joy.active) { dx = joy.dx * 0.6; dy = joy.dy * 0.6; } 
         else { if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1; if(keys.a || keys.ArrowLeft) dx = -1; if(keys.d || keys.ArrowRight) dx = 1; if (dx !== 0 || dy !== 0) { let length = Math.hypot(dx, dy); dx /= length; dy /= length; } }
-        let speed = p.speed; let isWinter = seasons[gameState.seasonIndex].name === 'Winter';
-        let onRiver = isNearRiver(p.x, p.y, 60); let inSea = p.x > 3600;
+        
+        // --- Heat & Hydration Logic ---
+        let isSummer = seasons[gameState.seasonIndex].name === 'Sommer';
+        let onRiver = isNearRiver(p.x, p.y, 60); 
+        let inSea = p.x > 2500;
+        
+        if(isSummer && gameState.weather === 'sunny') {
+            p.hydration = Math.max(0, p.hydration - 0.05); // Drain hydration in summer heat
+        }
+        
+        if(onRiver || (inSea && isSummer)) { // Drink in river or sea(less realistic but gamey)
+            if(p.hydration < 100) {
+                p.hydration += 1;
+                if(Math.random()<0.05) createParticles(p.x, p.y, "💧", 1);
+            }
+        }
+        
+        let speed = p.speed;
+        if(p.hydration < 30) speed *= 0.6; // Dehydrated slow down
+
+        let isWinter = seasons[gameState.seasonIndex].name === 'Winter';
+        
         if(onRiver || inSea) {
             if(isWinter && !inSea) { p.vx = p.vx * 0.99 + dx * 0.05; p.vy = p.vy * 0.99 + dy * 0.05; if(Math.hypot(p.vx, p.vy) > 0.5 && Math.random() < 0.05) Sound.playSlide(); } 
-            else { speed *= 0.3; if(Math.random() < 0.05 && (dx!=0 || dy!=0)) { Sound.playSplash(); createParticles(p.x, p.y, "💧", 1); } }
+            else { 
+                speed *= 0.3; 
+                p.vx = dx * speed; p.vy = dy * speed; 
+                if(Math.random() < 0.05 && (dx!=0 || dy!=0)) { Sound.playSplash(); createParticles(p.x, p.y, "💧", 1); } 
+            }
         } else { p.vx = dx * speed; p.vy = dy * speed; }
+        
         let isSprinting = (keys.Shift || (joy.active && Math.hypot(joy.dx,joy.dy) > 0.9));
         if(isSprinting && p.stamina > 0 && (dx!=0 || dy!=0)) { if((onRiver || inSea) && isWinter && !inSea) { p.vx*=1.02; p.vy*=1.02; } else { p.vx *= 1.6; p.vy *= 1.6; } p.stamina -= 0.5; } else { if(p.stamina < p.maxStamina) p.stamina += 0.2; }
         if(p.z > 0 || p.vz !== 0) { p.z += p.vz; p.vz -= 0.8; if(p.z <= 0) { p.z = 0; p.vz = 0; Sound.playNoise(0.1); } }
@@ -550,6 +622,9 @@
         if(Math.hypot(p.vx, p.vy) > 0.1) { p.animFrame += Math.hypot(p.vx, p.vy) * 0.05; p.flip = p.vx < 0; if(!onRiver && !inSea && Math.floor(p.animFrame*10) % 5 === 0 && p.z === 0) gameState.footprints.push({x: p.x, y: p.y, age: 100}); if(!onRiver && !inSea && Math.floor(p.animFrame*5) % 10 === 0 && p.z === 0) Sound.playNoise(0.05); } else { p.animFrame = 0; }
         p.x = Math.max(50, Math.min(WORLD_W-50, p.x)); p.y = Math.max(50, Math.min(WORLD_H-50, p.y));
         if(p.z < 10) { for(let o of gameState.terrain.obstacles) { if(p.x > o.x - 20 && p.x < o.x + o.w + 20 && p.y > o.y - 10 && p.y < o.y + o.h + 10) { p.x = prevX; p.y = prevY; p.vx = 0; p.vy = 0; } } }
+    
+        // Show drink hint if low hydration
+        document.getElementById('drink-hint').style.display = (p.hydration < 30) ? 'block' : 'none';
     }
     
     // --- Minigame Logic (Existing) ---
@@ -576,9 +651,138 @@
     function returnToFarm() { closeModals(); Music.stop(); gameState.mode = MODES.WORLD; gameState.minigame.active = false; document.getElementById('minigame-hud').style.display = 'none'; document.getElementById('foal-school-actions').style.display = 'none'; document.getElementById('ui-layer').querySelector('.hud-left').style.display='flex'; document.getElementById('result-screen').style.display = 'none'; if(isTouchDevice) { document.getElementById('mobile-actions').style.display = 'flex'; document.getElementById('joystick-touch-zone').style.display = 'block'; document.getElementById('mobile-jump-only').style.display = 'none'; } generateWorld(); }
 
     function setupFoalSchool() { gameState.player.x = 400; gameState.player.y = 400; gameState.minigame.foalSchool.foal = { x: 500, y: 400, color: '#A1887F', flip: true, anim: 0, state: 'follow', trick: null }; gameState.minigame.foalSchool.trickWanted = null; gameState.minigame.foalSchool.trickTimer = 0; document.getElementById('mg-info').innerText = "Drücke die richtigen Buttons!"; }
-    function updateFoalSchool() { if(gameState.minigame.state === 'warmup') { gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown); if(gameState.minigame.countdown <= 0) { gameState.minigame.state = 'play'; document.getElementById('mg-info').innerText = "Achte auf die Blase!"; } return; } if(gameState.minigame.state !== 'play') return; handlePlayerMovement(); const f = gameState.minigame.foalSchool.foal; const p = gameState.player; gameState.minigame.foalSchool.trickTimer++; if(gameState.minigame.foalSchool.trickTimer > 200 && !gameState.minigame.foalSchool.trickWanted) { const tricks = ['rear', 'lie', 'spin']; gameState.minigame.foalSchool.trickWanted = tricks[Math.floor(Math.random()*tricks.length)]; gameState.minigame.foalSchool.trickTimer = 0; Sound.playPop(); } if (!gameState.minigame.foalSchool.trickWanted) { let dist = Math.hypot(f.x - p.x, f.y - p.y); if(dist > 80) { let angle = Math.atan2(p.y - f.y, p.x - f.x); f.x += Math.cos(angle) * 3.5; f.y += Math.sin(angle) * 3.5; f.anim += 0.2; f.flip = Math.cos(angle) < 0; } else { f.anim = 0; } } if(f.trick) { if(f.trick === 'rear') f.anim = Math.sin(Date.now()/100)*2; if(f.trick === 'lie') f.anim = 0; if(f.trick === 'spin') f.flip = (Math.floor(Date.now()/100)%2)===0; if(gameState.minigame.foalSchool.trickTimer > 60) { f.trick = null; gameState.minigame.foalSchool.trickTimer = 0; } } document.getElementById('mg-score').innerText = gameState.minigame.score; if(gameState.minigame.score >= 500) { endMinigame(5, "Toller Lehrer!"); } }
-    window.triggerFoalTrick = (trick) => { if(gameState.mode !== MODES.FOAL_SCHOOL || !gameState.minigame.foalSchool.trickWanted) return; if(trick === gameState.minigame.foalSchool.trickWanted) { gameState.minigame.score += 100; Sound.playSuccess(); createParticles(gameState.minigame.foalSchool.foal.x, gameState.minigame.foalSchool.foal.y, "✨", 10); gameState.minigame.foalSchool.foal.trick = trick; gameState.minigame.foalSchool.trickWanted = null; gameState.minigame.foalSchool.trickTimer = 0; } else { Sound.playFail(); gameState.minigame.score = Math.max(0, gameState.minigame.score - 20); } };
-    function drawFoalSchool() { ctx.fillStyle = "#A5D6A7"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.save(); ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(gameState.zoom, gameState.zoom); ctx.translate(-canvas.width/2, -canvas.height/2); ctx.translate(-gameState.camX, -gameState.camY); ctx.beginPath(); ctx.arc(400, 400, 300, 0, Math.PI*2); ctx.strokeStyle = "#8D6E63"; ctx.lineWidth = 10; ctx.stroke(); const p = gameState.player; const f = gameState.minigame.foalSchool.foal; let rot = 0; let ty = 0; if(f.trick==='rear') { rot = -0.4; ty = -20; } if(f.trick==='lie') { rot = Math.PI/2; ty = 30; } ctx.save(); ctx.translate(f.x, f.y); if(rot!==0) ctx.rotate(rot); if(f.trick) ctx.translate(-f.x, -f.y + ty); else ctx.translate(-f.x, -f.y); drawRealisticHorse(ctx, f.x, f.y, f.color, f.flip, false, f.anim, (f.anim>0 && !f.trick), 0, 0.7); ctx.restore(); if(gameState.minigame.foalSchool.trickWanted) { ctx.fillStyle = "white"; ctx.beginPath(); ctx.ellipse(f.x, f.y - 60, 30, 25, 0, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.stroke(); ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; let icon = "❓"; if(gameState.minigame.foalSchool.trickWanted === 'rear') icon = "🦄"; if(gameState.minigame.foalSchool.trickWanted === 'lie') icon = "💤"; if(gameState.minigame.foalSchool.trickWanted === 'spin') icon = "🌪️"; ctx.fillText(icon, f.x, f.y - 60); } let isMoving = Math.hypot(p.vx, p.vy) > 0.1; drawRealisticHorse(ctx, p.x, p.y, p.color, p.flip, true, p.animFrame, isMoving, p.z, 1); ctx.font = "20px Arial"; for(let i=gameState.particles.length-1; i>=0; i--) { let pt = gameState.particles[i]; pt.y -= 1; pt.life -= 0.02; ctx.globalAlpha = pt.life; ctx.fillText(pt.char, pt.x, pt.y); if(pt.life<=0) gameState.particles.splice(i,1); } ctx.globalAlpha = 1; ctx.restore(); }
+    
+    function updateFoalSchool() { 
+        if(gameState.minigame.state === 'warmup') { 
+            gameState.minigame.countdown -= 0.05; 
+            document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown); 
+            if(gameState.minigame.countdown <= 0) { gameState.minigame.state = 'play'; document.getElementById('mg-info').innerText = "Achte auf die Blase!"; } 
+            return; 
+        } 
+        if(gameState.minigame.state !== 'play') return; 
+        
+        handlePlayerMovement(); 
+        const f = gameState.minigame.foalSchool.foal; 
+        const p = gameState.player; 
+        gameState.minigame.foalSchool.trickTimer++; 
+        
+        if(gameState.minigame.foalSchool.trickTimer > 200 && !gameState.minigame.foalSchool.trickWanted) { 
+            const tricks = ['rear', 'lie', 'spin']; 
+            gameState.minigame.foalSchool.trickWanted = tricks[Math.floor(Math.random()*tricks.length)]; 
+            gameState.minigame.foalSchool.trickTimer = 0; 
+            Sound.playPop(); 
+        } 
+        
+        if (!gameState.minigame.foalSchool.trickWanted) { 
+            let dist = Math.hypot(f.x - p.x, f.y - p.y); 
+            if(dist > 80) { 
+                let angle = Math.atan2(p.y - f.y, p.x - f.x); 
+                f.x += Math.cos(angle) * 3.5; f.y += Math.sin(angle) * 3.5; 
+                f.anim += 0.2; f.flip = Math.cos(angle) < 0; 
+            } else { f.anim = 0; } 
+        } 
+        
+        if(f.trick) { 
+            let limit = 60;
+            if(f.trick === 'lie') limit = 100;
+            if(f.trick === 'spin') limit = 60;
+            if(gameState.minigame.foalSchool.trickTimer > limit) { f.trick = null; gameState.minigame.foalSchool.trickTimer = 0; } 
+        } 
+        
+        document.getElementById('mg-score').innerText = gameState.minigame.score; 
+        if(gameState.minigame.score >= 500) { endMinigame(5, "Toller Lehrer!"); } 
+    }
+
+    function triggerFoalTrick(trick) { 
+        if(gameState.mode !== MODES.FOAL_SCHOOL || !gameState.minigame.foalSchool.trickWanted) return; 
+        if(trick === gameState.minigame.foalSchool.trickWanted) { 
+            gameState.minigame.score += 100; 
+            Sound.playSuccess(); 
+            createParticles(gameState.minigame.foalSchool.foal.x, gameState.minigame.foalSchool.foal.y, "✨", 10); 
+            gameState.minigame.foalSchool.foal.trick = trick; 
+            gameState.minigame.foalSchool.trickWanted = null; 
+            gameState.minigame.foalSchool.trickTimer = 0; 
+        } else { 
+            Sound.playFail(); 
+            gameState.minigame.score = Math.max(0, gameState.minigame.score - 20); 
+        } 
+    };
+    
+    function drawFoalSchool() { 
+        ctx.fillStyle = "#A5D6A7"; 
+        ctx.fillRect(0,0,canvas.width,canvas.height); 
+        ctx.save(); 
+        ctx.translate(canvas.width/2, canvas.height/2); 
+        ctx.scale(gameState.zoom, gameState.zoom); 
+        ctx.translate(-canvas.width/2, -canvas.height/2); 
+        ctx.translate(-gameState.camX, -gameState.camY); 
+        
+        ctx.beginPath(); 
+        ctx.arc(400, 400, 300, 0, Math.PI*2); 
+        ctx.strokeStyle = "#8D6E63"; 
+        ctx.lineWidth = 10; 
+        ctx.stroke(); 
+        
+        const p = gameState.player; 
+        const f = gameState.minigame.foalSchool.foal; 
+        
+        let rot = 0; let ty = 0; let scaleX = 1; let animFrame = f.anim;
+        let timer = gameState.minigame.foalSchool.trickTimer;
+
+        if(f.trick === 'rear') {
+            let t = timer / 60; 
+            let curve = Math.sin(t * Math.PI); 
+            rot = -curve * 0.8; 
+            ty = -curve * 30;
+            if(t > 0.2 && t < 0.8) animFrame += 0.5;
+        } 
+        else if(f.trick === 'lie') {
+            let t = timer / 100;
+            if(t < 0.3) { let p = t / 0.3; rot = p * (Math.PI/2); ty = p * 30; } 
+            else if (t < 0.8) { rot = Math.PI/2; ty = 30; createParticles(f.x, f.y-20, "z", 0.1); } 
+            else { let p = (1 - t) / 0.2; rot = p * (Math.PI/2); ty = p * 30; }
+        } 
+        else if(f.trick === 'spin') {
+            let t = timer / 60;
+            scaleX = Math.cos(t * Math.PI * 2);
+            ty = -Math.abs(Math.sin(t * Math.PI * 2)) * 10;
+        }
+
+        ctx.save(); 
+        ctx.translate(f.x, f.y); 
+        if(scaleX !== 1) ctx.scale(scaleX, 1);
+        if(rot !== 0) ctx.rotate(rot);
+        ctx.translate(0, ty);
+        let drawFlip = (f.trick === 'spin') ? false : f.flip;
+        drawRealisticHorse(ctx, 0, 0, f.color, drawFlip, false, animFrame, (f.anim>0 && !f.trick), 0, 0.7); 
+        ctx.restore(); 
+        
+        if(gameState.minigame.foalSchool.trickWanted) { 
+            ctx.fillStyle = "white"; 
+            ctx.beginPath(); ctx.ellipse(f.x, f.y - 60, 30, 25, 0, 0, Math.PI*2); ctx.fill(); 
+            ctx.strokeStyle = "#333"; ctx.lineWidth = 2; ctx.stroke(); 
+            ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; 
+            let icon = "❓"; 
+            if(gameState.minigame.foalSchool.trickWanted === 'rear') icon = "🦄"; 
+            if(gameState.minigame.foalSchool.trickWanted === 'lie') icon = "💤"; 
+            if(gameState.minigame.foalSchool.trickWanted === 'spin') icon = "🌪️"; 
+            ctx.fillText(icon, f.x, f.y - 60); 
+        } 
+        
+        let isMoving = Math.hypot(p.vx, p.vy) > 0.1; 
+        drawRealisticHorse(ctx, p.x, p.y, p.color, p.flip, true, p.animFrame, isMoving, p.z, 1); 
+        
+        ctx.font = "20px Arial"; 
+        for(let i=gameState.particles.length-1; i>=0; i--) { 
+            let pt = gameState.particles[i]; 
+            pt.y -= 1; pt.life -= 0.02; 
+            ctx.globalAlpha = pt.life; 
+            ctx.fillText(pt.char, pt.x, pt.y); 
+            if(pt.life<=0) gameState.particles.splice(i,1); 
+        } 
+        ctx.globalAlpha = 1; 
+        ctx.restore(); 
+    }
 
     function setupRace() { gameState.player.x = 100; gameState.player.y = 300; gameState.minigame.opponents = [ {x:100, y:200, speed: 7, color: '#333', rank:0}, {x:100, y:400, speed: 7.5, color: '#aaa', rank:0}, {x:100, y:500, speed: 6.8, color: '#630', rank:0} ]; gameState.minigame.objects = []; for(let i=0; i<20; i++) gameState.minigame.objects.push({x: 500 + Math.random()*4000, y: 150 + Math.random()*400, w:40, h:40, type:'box'}); for(let i=0; i<60; i++) { gameState.minigame.objects.push({x: i*100, y: 100, w: 40, h: 40, type:'hay'}); gameState.minigame.objects.push({x: i*100, y: 600, w: 40, h: 40, type:'hay'}); } document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick: Lenken & Gas!" : "WASD zum Lenken!"; }
     function updateRace() { if(gameState.minigame.state === 'warmup') { gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = Math.ceil(gameState.minigame.countdown); if(gameState.minigame.countdown <= 0) { gameState.minigame.state = 'play'; document.getElementById('mg-info').innerText = "LOS!"; Music.play('race'); } return; } if(gameState.minigame.state !== 'play') return; let dx = 0; let dy = 0; if(joy.active) { if(joy.dx > 0.2) dx = 1; if(Math.abs(joy.dy) > 0.2) dy = joy.dy; } else { if(keys.d || keys.ArrowRight) dx = 1; if(keys.w || keys.ArrowUp) dy = -1; if(keys.s || keys.ArrowDown) dy = 1; } gameState.player.x += (gameState.player.speed + (dx > 0 ? (keys.Shift ? 2 : 1) * dx * 2 : 0)); gameState.player.y += dy * 4; gameState.player.y = Math.max(120, Math.min(580, gameState.player.y)); gameState.player.animFrame += 0.3; for(let o of gameState.minigame.objects) { if(Math.abs(gameState.player.x - o.x) < 30 && Math.abs(gameState.player.y - o.y) < 30) { gameState.player.x -= 20; Sound.playFail(); } } for(let op of gameState.minigame.opponents) { op.x += op.speed + (Math.random()-0.3); op.animFrame = (op.animFrame||0) + 0.3; } let dist = 5000; let pPct = Math.floor((gameState.player.x / dist)*100); document.getElementById('mg-score').innerText = pPct + "%"; gameState.minigame.score = pPct; if(gameState.player.x >= dist) { gameState.minigame.score = 100 + Math.floor(gameState.player.stamina); let rank = 1; for(let op of gameState.minigame.opponents) if(op.x > gameState.player.x) rank++; let stars = rank === 1 ? 5 : (rank === 2 ? 3 : 1); endMinigame(stars, "Platz " + rank + "!"); } }
@@ -593,16 +797,58 @@
     function updateDressage() { if(gameState.minigame.state === 'warmup') { gameState.minigame.countdown -= 0.05; document.getElementById('mg-info').innerText = "Gleich gehts los!"; if(gameState.minigame.countdown <= 0) { gameState.minigame.state = 'play'; document.getElementById('mg-info').innerText = isTouchDevice ? "Joystick in Pfeilrichtung!" : "Drücke Pfeiltasten im goldenen Ring!"; Music.play('dressage'); } return; } if(gameState.minigame.state !== 'play') return; gameState.minigame.timer++; if(gameState.minigame.timer % 60 === 0) { let k = DRESSAGE_KEYS[Math.floor(Math.random()*4)]; gameState.minigame.objects.push({key: k, y: 0, hit: false}); } let targetY = canvas.height - 100; for(let arr of gameState.minigame.objects) { arr.y += 3; } let inputKey = null; if(joy.active) { let threshold = 0.5; if (joy.triggerReset) { if (joy.dy < -threshold) { inputKey = 'ArrowUp'; joy.triggerReset = false; } else if (joy.dy > threshold) { inputKey = 'ArrowDown'; joy.triggerReset = false; } else if (joy.dx < -threshold) { inputKey = 'ArrowLeft'; joy.triggerReset = false; } else if (joy.dx > threshold) { inputKey = 'ArrowRight'; joy.triggerReset = false; } } else { if (Math.abs(joy.dx) < 0.2 && Math.abs(joy.dy) < 0.2) { joy.triggerReset = true; } } } if(keys.w) { inputKey = 'ArrowUp'; keys.w = false; } else if(keys.ArrowUp) { inputKey = 'ArrowUp'; keys.ArrowUp = false; } else if(keys.s) { inputKey = 'ArrowDown'; keys.s = false; } else if(keys.ArrowDown) { inputKey = 'ArrowDown'; keys.ArrowDown = false; } else if(keys.a) { inputKey = 'ArrowLeft'; keys.a = false; } else if(keys.ArrowLeft) { inputKey = 'ArrowLeft'; keys.ArrowLeft = false; } else if(keys.d) { inputKey = 'ArrowRight'; keys.d = false; } else if(keys.ArrowRight) { inputKey = 'ArrowRight'; keys.ArrowRight = false; } gameState.minigame.dressageOffset.x *= 0.9; gameState.minigame.dressageOffset.y *= 0.9; if(gameState.player.z > 0) { gameState.player.z -= 2; } if(inputKey) { if(inputKey === 'ArrowLeft') gameState.minigame.dressageOffset.x = -80; if(inputKey === 'ArrowRight') gameState.minigame.dressageOffset.x = 80; if(inputKey === 'ArrowUp') gameState.player.z = 60; if(inputKey === 'ArrowDown') gameState.minigame.dressageOffset.y = 40; let closest = gameState.minigame.objects.find(a => !a.hit && Math.abs(a.y - targetY) < 60); if(closest && closest.key === inputKey) { closest.hit = true; gameState.minigame.score += 50; Sound.playSuccess(); gameState.player.animFrame += 1; createParticles(canvas.width/2, targetY, "✨", 5); gameState.minigame.feedbackText = { text: "Perfekt!", alpha: 1.0, y: targetY - 50 }; gameState.player.vz = 5; } else { gameState.minigame.feedbackText = { text: "Ups!", alpha: 1.0, y: targetY - 50 }; } } if(gameState.player.z > 0 || gameState.player.vz !== 0) { gameState.player.z += gameState.player.vz; gameState.player.vz -= 1; if(gameState.player.z < 0) { gameState.player.z = 0; gameState.player.vz = 0; } } gameState.minigame.objects = gameState.minigame.objects.filter(a => a.y < canvas.height); document.getElementById('mg-score').innerText = gameState.minigame.score; if(gameState.minigame.timer > 1200) { let stars = Math.floor(gameState.minigame.score / 200); if(stars > 5) stars = 5; endMinigame(stars, "Tanz beendet!"); } }
 
     function playerJump() { if(gameState.player.z === 0) { gameState.player.vz = 12; Sound.playJump(); } }
-    function interact() { if(gameState.training.active) return; let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50); if(nearBed) { handleGardenInteract(nearBed); return; } let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); if(nearFoal) { startTraining(nearFoal); return; } dropItem(); }
+    
+    function interact() { 
+        if(gameState.training.active) return; 
+        
+        // Handle Panicked Horses
+        if(gameState.weather === 'storm') {
+            let panickedHorse = gameState.entities.horses.find(h => h.state === 'panic' && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 80);
+            if(panickedHorse) {
+                panickedHorse.state = 'idle';
+                Sound.playSuccess();
+                createParticles(panickedHorse.x, panickedHorse.y, "❤️", 5);
+                gameState.stars += 1;
+                updateUI();
+                return;
+            }
+        }
+
+        let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50); 
+        if(nearBed) { handleGardenInteract(nearBed); return; } 
+        let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); 
+        if(nearFoal) { startTraining(nearFoal); return; } 
+        dropItem(); 
+    }
+    
     function dropItem() { if(!gameState.inventory) return; Sound.playPop(); const p = gameState.player; let dx = p.flip ? 60 : -60; gameState.entities.items.push({ x: p.x + dx, y: p.y, type: gameState.inventory }); gameState.inventory = null; createParticles(p.x, p.y, "💨", 5); updateUI(); if(gameState.quest.horse) updateQuestUI(); }
     function handleGardenInteract(b) { if(!b.plant && gameState.inventory && (gameState.inventory.name==='Apfel'||gameState.inventory.name==='Möhre')) { b.plant=gameState.inventory.name; b.growth=0; b.watered=false; Sound.playNoise(0.5); gameState.inventory=null; updateUI(); } else if(b.plant && !b.watered && gameState.inventory && gameState.inventory.name==='Wasser') { b.watered=true; Sound.playSplash(); gameState.inventory=null; updateUI(); } else if(b.plant && b.growth>=100) { gameState.entities.items.push({ x:b.x+30, y:b.y+60, type:itemTypes[b.plant==='Apfel'?'apple':'carrot'] }); Sound.playPop(); b.plant=null; } }
     function updateGarden() { gameState.terrain.beds.forEach(b => { if(b.plant && b.watered && b.growth < 100) b.growth += 0.05; }); let nearBed = gameState.terrain.beds.find(b => Math.hypot(gameState.player.x - (b.x+b.w/2), gameState.player.y - (b.y+b.h/2)) < 50); document.getElementById('garden-hint').style.display = nearBed ? 'block' : 'none'; let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); document.getElementById('train-btn').style.display = nearFoal ? 'flex' : 'none'; }
     function toggleTrainingMenu() { let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); if(nearFoal) startTraining(nearFoal); }
     function startTraining(foal) { gameState.training.active = !gameState.training.active; gameState.training.targetFoal = foal; document.getElementById('training-actions').style.display = gameState.training.active ? 'flex' : 'none'; }
     function commandFoal(cmd) { const f = gameState.training.targetFoal; if(cmd==='rear') { f.trick='rear'; f.trickTimer=60; Sound.playJump(); createParticles(f.x,f.y,"✨",5); } if(cmd==='lie') { f.trick='lie'; f.trickTimer=100; Sound.playNoise(0.2); createParticles(f.x,f.y,"💤",5); } gameState.stars+=1; updateUI(); gameState.training.active=false; document.getElementById('training-actions').style.display='none'; }
-    function checkCollisions() { const p = gameState.player; if(!gameState.inventory) { for(let i=0; i<gameState.entities.items.length; i++) { let it=gameState.entities.items[i]; if(Math.hypot(p.x-it.x, p.y-it.y)<40) { gameState.inventory=it.type; gameState.entities.items.splice(i,1); Sound.playPop(); updateUI(); break; } } } if(gameState.quest.horse && !gameState.quest.horse.satisfied) { let h=gameState.quest.horse; if(Math.hypot(p.x-h.x, p.y-h.y)<80) { if(gameState.inventory && gameState.inventory.name===h.want.name) completeQuest(h); } } }
+    function checkCollisions() { 
+        const p = gameState.player; 
+        
+        // Show Calm Hint
+        let panickedHorse = gameState.entities.horses.find(h => h.state === 'panic' && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 100);
+        document.getElementById('calm-hint').style.display = panickedHorse ? 'block' : 'none';
+
+        if(!gameState.inventory) { for(let i=0; i<gameState.entities.items.length; i++) { let it=gameState.entities.items[i]; if(Math.hypot(p.x-it.x, p.y-it.y)<40) { gameState.inventory=it.type; gameState.entities.items.splice(i,1); Sound.playPop(); updateUI(); break; } } } 
+        
+        // Drink from inventory if needed
+        if(gameState.inventory && gameState.inventory.name === 'Wasser' && p.hydration < 80) {
+            p.hydration = 100;
+            gameState.inventory = null;
+            Sound.playSplash();
+            createParticles(p.x, p.y, "💧", 5);
+            updateUI();
+        }
+
+        if(gameState.quest.horse && !gameState.quest.horse.satisfied) { let h=gameState.quest.horse; if(Math.hypot(p.x-h.x, p.y-h.y)<80) { if(gameState.inventory && gameState.inventory.name===h.want.name) completeQuest(h); } } 
+    }
     function completeQuest(h) { h.satisfied = true; gameState.inventory = null; gameState.stars += 1; Sound.playSuccess(); createParticles(h.x, h.y, "❤️", 10); updateUI(); updateQuestUI(); setTimeout(() => { const next = gameState.entities.horses.find(nh => !nh.isFoal && !nh.satisfied); gameState.quest.horse = next || null; updateQuestUI(); }, 2000); }
-    function checkHouseSleep() { if(gameState.sleeping) return; const p=gameState.player; const h=gameState.terrain.house; if(h && p.x>h.x+60 && p.x<h.x+h.w-60 && p.y>h.y+h.h-40 && p.y<h.y+h.h+20) { gameState.sleeping=true; Sound.playSleep(); document.getElementById('sleep-overlay').style.opacity=1; setTimeout(() => { gameState.time=0.25; gameState.player.stamina=100; gameState.player.x+=20; updateUI(); setTimeout(() => { document.getElementById('sleep-overlay').style.opacity=0; gameState.sleeping=false; }, 1500); }, 1500); } }
+    function checkHouseSleep() { if(gameState.sleeping) return; const p=gameState.player; const h=gameState.terrain.house; if(h && p.x>h.x+60 && p.x<h.x+h.w-60 && p.y>h.y+h.h-40 && p.y<h.y+h.h+20) { gameState.sleeping=true; Sound.playSleep(); document.getElementById('sleep-overlay').style.opacity=1; setTimeout(() => { gameState.time=0.25; gameState.player.stamina=100; gameState.player.hydration=100; gameState.player.x+=20; updateUI(); setTimeout(() => { document.getElementById('sleep-overlay').style.opacity=0; gameState.sleeping=false; }, 1500); }, 1500); } }
 
     function draw() {
         if(gameState.mode === MODES.WORLD) drawWorld();
@@ -617,19 +863,50 @@
         const season = seasons[gameState.seasonIndex];
         ctx.fillStyle = season.bg; ctx.fillRect(0,0,canvas.width, canvas.height);
         
-        let t = gameState.time; let overlay = null; if(t<0.2) overlay = "rgba(135,206,235,0.3)"; else if(t>0.7) overlay = `rgba(0,0,50,${(t-0.7)*3})`;
+        let t = gameState.time; let overlay = null; 
+        if(t<0.2) overlay = "rgba(135,206,235,0.3)"; 
+        else if(t>0.7) overlay = `rgba(0,0,50,${(t-0.7)*3})`;
+        
+        // Storm Overlay
+        if(gameState.weather === 'storm') {
+            overlay = "rgba(0,0,50,0.6)";
+            // Rain
+            ctx.fillStyle = "rgba(200,200,255,0.6)";
+            for(let i=0; i<100; i++) {
+                let rx = Math.random() * canvas.width;
+                let ry = Math.random() * canvas.height;
+                ctx.fillRect(rx, ry, 2, 10);
+            }
+        }
+        else if(gameState.weather === 'rain') {
+            ctx.fillStyle = "rgba(100,100,200,0.4)";
+            for(let i=0; i<50; i++) {
+                let rx = Math.random() * canvas.width;
+                let ry = Math.random() * canvas.height;
+                ctx.fillRect(rx, ry, 1, 8);
+            }
+        }
+
         ctx.save(); ctx.translate(canvas.width/2, canvas.height/2); ctx.scale(gameState.zoom, gameState.zoom); ctx.translate(-canvas.width/2, -canvas.height/2); ctx.translate(-gameState.camX, -gameState.camY);
 
         // Draw Biomes
-        // Beach
         ctx.fillStyle = "#f39c12"; // Sand
-        ctx.fillRect(2500, 0, 1500, 2500);
+        ctx.beginPath();
+        ctx.moveTo(WORLD_W, 0); ctx.lineTo(WORLD_W, WORLD_H);
+        for(let y=WORLD_H; y>=0; y-=50) { ctx.lineTo(2500 + Math.sin(y/200)*100, y); }
+        ctx.fill();
+        
         ctx.fillStyle = "#3498db"; // Sea
-        ctx.fillRect(3600, 0, 400, 2500);
+        ctx.beginPath();
+        ctx.moveTo(WORLD_W, 0); ctx.lineTo(WORLD_W, WORLD_H);
+        for(let y=WORLD_H; y>=0; y-=50) { ctx.lineTo(3600 + Math.sin(y/150)*50, y); }
+        ctx.fill();
 
-        // Crystal Forest ground
         ctx.fillStyle = "#2c3e50"; // Dark ground
-        ctx.fillRect(0, 2000, 4000, 500);
+        ctx.beginPath();
+        ctx.moveTo(0, WORLD_H); ctx.lineTo(WORLD_W, WORLD_H);
+        for(let x=WORLD_W; x>=0; x-=50) { ctx.lineTo(x, 2000 + Math.sin(x/200)*100); }
+        ctx.fill();
 
         for(let fp of gameState.footprints) { ctx.fillStyle = `rgba(0,0,0,${Math.min(0.2, fp.age/500)})`; ctx.beginPath(); ctx.ellipse(fp.x, fp.y+45, 10, 5, 0, 0, Math.PI*2); ctx.fill(); }
 
@@ -671,8 +948,11 @@
             if(obj.type === 'horse') {
                 let rot = 0; let ty = 0; if(obj.trick==='rear') { rot = -0.4; ty = -20; } if(obj.trick==='lie') { rot = Math.PI/2; ty = 30; }
                 ctx.save(); if(obj.trick) ctx.translate(obj.x, obj.y); if(rot!==0) ctx.rotate(rot); if(obj.trick) ctx.translate(-obj.x, -obj.y + ty);
-                drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, false, obj.anim||0, obj.state==='walk', 0, obj.isFoal?0.6:1);
+                drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, false, obj.anim||0, obj.state==='walk'||obj.state==='panic', 0, obj.isFoal?0.6:1);
                 ctx.restore();
+                if(obj.state === 'panic') {
+                    ctx.font = "30px Arial"; ctx.fillText("⚡", obj.x, obj.y - 70);
+                }
                 if(gameState.quest.horse && obj.id === gameState.quest.horse.id && !obj.satisfied) {
                      ctx.save(); let bounce = Math.sin(Date.now()/200) * 5; ctx.translate(obj.x, obj.y - 80 + bounce); ctx.fillStyle = "white"; ctx.beginPath(); ctx.ellipse(0, 0, 30, 25, 0, 0, Math.PI*2); ctx.fill(); ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "black"; ctx.fillText(obj.want.emoji, 0, 0); ctx.restore();
                 }
@@ -692,6 +972,9 @@
 
         ctx.restore();
         if(overlay) { ctx.fillStyle = overlay; ctx.fillRect(0,0,canvas.width, canvas.height); }
+        
+        // Lightning Flash
+        document.getElementById('storm-overlay').style.opacity = (gameState.lightningTimer > 0) ? 0.8 : 0;
     }
     function drawRace() { ctx.fillStyle = "#e67e22"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.save(); ctx.translate(100 - gameState.player.x, 0); ctx.fillStyle = "#d35400"; ctx.fillRect(0, 100, 5000, 10); ctx.fillRect(0, 600, 5000, 10); ctx.fillStyle = "white"; for(let i=0; i<10; i++) { ctx.fillRect(5000, 100 + i*50, 20, 20); ctx.fillStyle = ctx.fillStyle==="#000"?"#fff":"#000"; } for(let o of gameState.minigame.objects) { if(o.type === 'hay') ctx.fillStyle = "#f1c40f"; else ctx.fillStyle = "#555"; ctx.fillRect(o.x, o.y, o.w, o.h); if(o.type === 'hay') { ctx.strokeStyle = "#d4ac0d"; ctx.lineWidth=2; ctx.strokeRect(o.x, o.y, o.w, o.h); ctx.beginPath(); ctx.moveTo(o.x+5, o.y+5); ctx.lineTo(o.x+o.w-5, o.y+o.h-5); ctx.stroke(); } } for(let op of gameState.minigame.opponents) { drawRealisticHorse(ctx, op.x, op.y, op.color, false, false, (op.animFrame||0), true, 0, 1); } drawRealisticHorse(ctx, gameState.player.x, gameState.player.y, gameState.player.color, false, true, gameState.player.animFrame, true, 0, 1); ctx.restore(); }
     function drawJump() { ctx.fillStyle = "#27ae60"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.save(); ctx.translate(100 - gameState.player.x, 0); ctx.fillStyle = "#c0392b"; ctx.fillRect(0, 480, 4500, 40); for(let f of gameState.minigame.objects) { ctx.fillStyle = f.cleared ? "#2ecc71" : "#fff"; ctx.fillRect(f.x, 400, 20, 100); ctx.fillStyle = "red"; ctx.fillRect(f.x, 400, 20, 10); } drawRealisticHorse(ctx, gameState.player.x, gameState.player.y, gameState.player.color, false, true, gameState.player.animFrame, true, gameState.player.z, 1); ctx.restore(); }
@@ -726,24 +1009,172 @@
     function drawGardenBed(ctx, b) { ctx.fillStyle = b.watered ? "#5d4037" : "#8d6e63"; ctx.fillRect(b.x, b.y, b.w, b.h); ctx.strokeStyle = "#4e342e"; ctx.lineWidth=2; ctx.strokeRect(b.x, b.y, b.w, b.h); if(b.plant) { let emoji = "🌱"; if(b.growth > 30) emoji = "🌿"; if(b.growth >= 100) emoji = b.plant === 'Apfel' ? "🍎" : "🥕"; ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(emoji, b.x + b.w/2, b.y + b.h/2); if(b.growth < 100) { ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(b.x+5, b.y+b.h-10, b.w-10, 5); ctx.fillStyle = "#2ecc71"; ctx.fillRect(b.x+5, b.y+b.h-10, (b.w-10)*(b.growth/100), 5); } } }
     function drawHouse(ctx, h) { ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.fillRect(h.x+5, h.y+h.h-5, h.w, 10); ctx.fillStyle = "#ecf0f1"; ctx.fillRect(h.x, h.y, h.w, h.h); ctx.fillStyle = "#5d4037"; ctx.fillRect(h.x, h.y, 10, h.h); ctx.fillRect(h.x+h.w-10, h.y, 10, h.h); ctx.fillRect(h.x, h.y, h.w, 10); ctx.fillRect(h.x, h.y+h.h-10, h.w, 10); ctx.beginPath(); ctx.moveTo(h.x, h.y); ctx.lineTo(h.x+h.w, h.y+h.h); ctx.strokeStyle="#5d4037"; ctx.lineWidth=5; ctx.stroke(); ctx.beginPath(); ctx.moveTo(h.x+h.w, h.y); ctx.lineTo(h.x, h.y+h.h); ctx.stroke(); ctx.fillStyle = "#c0392b"; ctx.beginPath(); ctx.moveTo(h.x-10, h.y); ctx.lineTo(h.x + h.w/2, h.y - 60); ctx.lineTo(h.x + h.w + 10, h.y); ctx.fill(); ctx.fillStyle = "#3e2723"; ctx.fillRect(h.x + h.w/2 - 15, h.y + h.h - 40, 30, 40); ctx.fillStyle = "#8d6e63"; ctx.fillRect(h.x + h.w/2 - 30, h.y - 20, 60, 20); ctx.fillStyle = "#fff"; ctx.font = "12px Fredoka"; ctx.textAlign = "center"; ctx.fillText("Gute Nacht", h.x + h.w/2, h.y - 6); }
     function drawChicken(ctx, c) { ctx.save(); ctx.translate(c.x, c.y); if(c.vx < 0) ctx.scale(-1, 1); let bounce = c.panic > 0 ? Math.sin(Date.now()/50)*5 : Math.abs(Math.sin(Date.now()/200))*2; ctx.translate(0, -bounce); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 0, 10, 8, 0, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.moveTo(-8, -2); ctx.lineTo(-12, -8); ctx.lineTo(-10, -2); ctx.fill(); ctx.beginPath(); ctx.arc(6, -6, 5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#e74c3c"; ctx.beginPath(); ctx.ellipse(6, -10, 3, 2, 0, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(8, -4, 2, 3, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#f39c12"; ctx.beginPath(); ctx.moveTo(9, -7); ctx.lineTo(13, -5); ctx.lineTo(9, -3); ctx.fill(); ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(7, -7, 1, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle = "#ddd"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI, false); ctx.stroke(); ctx.restore(); }
-    function drawDog(ctx, d) { ctx.save(); ctx.translate(d.x, d.y); if(d.flip) ctx.scale(-1, 1); let l = Math.sin(d.anim)*4; let headBob = Math.abs(Math.sin(d.anim*2))*2; let tailWag = Math.sin(d.anim*3)*0.5; ctx.strokeStyle = "#e5e5e5"; ctx.lineWidth = 5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5-l, 20); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10+l, 20); ctx.stroke(); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, 5, 14, 8, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.arc(-5, 2, 4, 0, Math.PI*2); ctx.fill(); ctx.save(); ctx.translate(12, 0); ctx.rotate(-0.5 + tailWag); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(0, -6, 2, 6, 0, 0, Math.PI*2); ctx.fill(); ctx.restore(); ctx.strokeStyle = "red"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-8, 5); ctx.lineTo(-8, -5); ctx.stroke(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(5, 5); ctx.lineTo(5+l, 20); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-10, 5); ctx.lineTo(-10-l, 20); ctx.stroke(); ctx.save(); ctx.translate(-12, -8 + headBob); ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.ellipse(-2, -6, 3, 6, -0.5, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(6, -4, 3, 6, 0.5, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "#8d6e63"; ctx.beginPath(); ctx.arc(-3, -2, 4, 0, Math.PI*2); ctx.fill(); ctx.fillStyle = "black"; ctx.beginPath(); ctx.arc(-8, 1, 2, 0, Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(-3, -2, 1.5, 0, Math.PI*2); ctx.fill(); ctx.restore(); ctx.restore(); }
+    
+    function drawDog(ctx, d) { 
+        ctx.save(); 
+        ctx.translate(d.x, d.y); 
+        // Mirror geometry so default is RIGHT
+        if(d.flip) ctx.scale(-1, 1); 
+        
+        let l = Math.sin(d.anim)*4; 
+        let headBob = Math.abs(Math.sin(d.anim*2))*2; 
+        let tailWag = Math.sin(d.anim*3)*0.5; 
+        
+        // Body (Ellipse 0,5) - symmetric
+        // Legs: originally 5 (right) and -10 (left). Flip signs for default RIGHT facing.
+        // Front leg (was 5) -> now 10
+        // Back leg (was -10) -> now -5
+        
+        ctx.strokeStyle = "#e5e5e5"; 
+        ctx.lineWidth = 5; 
+        ctx.lineCap = "round"; 
+        
+        // Back leg
+        ctx.beginPath(); 
+        ctx.moveTo(-5, 5); 
+        ctx.lineTo(-5-l, 20); 
+        ctx.stroke(); 
+        
+        // Front leg
+        ctx.beginPath(); 
+        ctx.moveTo(10, 5); 
+        ctx.lineTo(10+l, 20); 
+        ctx.stroke(); 
+        
+        ctx.fillStyle = "#fff"; 
+        ctx.beginPath(); 
+        ctx.ellipse(0, 5, 14, 8, 0, 0, Math.PI*2); 
+        ctx.fill(); 
+        
+        // Spot (was -5) -> now 5? Keep random or specific
+        ctx.fillStyle = "#8d6e63"; 
+        ctx.beginPath(); 
+        ctx.arc(5, 2, 4, 0, Math.PI*2); 
+        ctx.fill(); 
+        
+        // Tail (was translate 12) -> if face right, tail is left (-12)
+        ctx.save(); 
+        ctx.translate(-12, 0); 
+        ctx.rotate(0.5 - tailWag); // Rotate opposite
+        ctx.fillStyle = "#fff"; 
+        ctx.beginPath(); 
+        ctx.ellipse(0, -6, 2, 6, 0, 0, Math.PI*2); 
+        ctx.fill(); 
+        ctx.restore(); 
+        
+        // Collar (was -8) -> now 8 (neck area)
+        ctx.strokeStyle = "red"; 
+        ctx.lineWidth = 2; 
+        ctx.beginPath(); 
+        ctx.moveTo(8, 5); 
+        ctx.lineTo(8, -5); 
+        ctx.stroke(); 
+
+        // Legs (foreground)
+        ctx.strokeStyle = "#fff"; 
+        ctx.lineWidth = 5; 
+        ctx.beginPath(); 
+        ctx.moveTo(-5, 5); 
+        ctx.lineTo(-5+l, 20); 
+        ctx.stroke(); 
+        ctx.beginPath(); 
+        ctx.moveTo(10, 5); 
+        ctx.lineTo(10-l, 20); 
+        ctx.stroke(); 
+        
+        // Head (was translate -12) -> now +12
+        ctx.save(); 
+        ctx.translate(12, -8 + headBob); 
+        ctx.fillStyle = "#fff"; 
+        ctx.beginPath(); 
+        ctx.arc(0, 0, 9, 0, Math.PI*2); 
+        ctx.fill(); 
+        
+        // Ears & Eyes (flip x offsets)
+        ctx.fillStyle = "#8d6e63"; 
+        ctx.beginPath(); 
+        ctx.ellipse(2, -6, 3, 6, 0.5, 0, Math.PI*2); // was -2, -0.5 rot
+        ctx.fill(); 
+        ctx.beginPath(); 
+        ctx.ellipse(-6, -4, 3, 6, -0.5, 0, Math.PI*2); // was 6, 0.5 rot
+        ctx.fill(); 
+        
+        ctx.fillStyle = "#8d6e63"; 
+        ctx.beginPath(); 
+        ctx.arc(3, -2, 4, 0, Math.PI*2); // was -3
+        ctx.fill(); 
+        
+        ctx.fillStyle = "black"; 
+        ctx.beginPath(); 
+        ctx.arc(8, 1, 2, 0, Math.PI*2); // Nose (was -8) -> +8
+        ctx.fill(); 
+        ctx.beginPath(); 
+        ctx.arc(3, -2, 1.5, 0, Math.PI*2); // Eye (was -3) -> +3
+        ctx.fill(); 
+        ctx.restore(); 
+        ctx.restore(); 
+    }
     
     function drawCat(ctx, c) {
-        ctx.save(); ctx.translate(c.x, c.y); if(c.flip) ctx.scale(-1, 1);
-        let l = Math.sin(c.anim)*2; let tail = Math.sin(Date.now()/200)*0.5;
-        // Body
-        ctx.fillStyle = "#E67E22"; ctx.beginPath(); ctx.ellipse(0, 5, 12, 7, 0, 0, Math.PI*2); ctx.fill();
-        // Legs
-        ctx.strokeStyle = "#E67E22"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(-6, 8); ctx.lineTo(-6+l, 18); ctx.stroke(); ctx.beginPath(); ctx.moveTo(6, 8); ctx.lineTo(6-l, 18); ctx.stroke();
-        // Head
-        ctx.translate(-10, -5); ctx.beginPath(); ctx.arc(0,0, 8, 0, Math.PI*2); ctx.fill();
-        // Ears
-        ctx.beginPath(); ctx.moveTo(-5,-5); ctx.lineTo(-8,-12); ctx.lineTo(0,-8); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(5,-5); ctx.lineTo(8,-12); ctx.lineTo(0,-8); ctx.fill();
-        // Tail
-        ctx.translate(20, 5); ctx.rotate(tail); ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(10, -10, 15, -5); ctx.stroke();
+        ctx.save(); 
+        ctx.translate(c.x, c.y); 
+        if(c.flip) ctx.scale(-1, 1);
+        
+        let l = Math.sin(c.anim)*2; 
+        let tail = Math.sin(Date.now()/200)*0.5;
+        
+        // Body (Ellipse 0,5)
+        ctx.fillStyle = "#E67E22"; 
+        ctx.beginPath(); 
+        ctx.ellipse(0, 5, 12, 7, 0, 0, Math.PI*2); 
+        ctx.fill();
+        
+        // Legs (Mirrored x for Right Facing)
+        ctx.strokeStyle = "#E67E22"; 
+        ctx.lineWidth=3; 
+        ctx.beginPath(); 
+        ctx.moveTo(6, 8); // was -6
+        ctx.lineTo(6+l, 18); 
+        ctx.stroke(); 
+        ctx.beginPath(); 
+        ctx.moveTo(-6, 8); // was 6
+        ctx.lineTo(-6-l, 18); 
+        ctx.stroke();
+        
+        // Head (was -10) -> +10
+        ctx.save();
+        ctx.translate(10, -5); 
+        ctx.beginPath(); 
+        ctx.arc(0,0, 8, 0, Math.PI*2); 
+        ctx.fill();
+        
+        // Ears (mirrored x)
+        ctx.beginPath(); 
+        ctx.moveTo(5,-5); // was -5
+        ctx.lineTo(8,-12); // was -8
+        ctx.lineTo(0,-8); 
+        ctx.fill();
+        
+        ctx.beginPath(); 
+        ctx.moveTo(-5,-5); // was 5
+        ctx.lineTo(-8,-12); // was 8
+        ctx.lineTo(0,-8); 
+        ctx.fill();
+        ctx.restore();
+        
+        // Tail (was +20) -> -20
+        ctx.save();
+        ctx.translate(-20, 5); 
+        ctx.rotate(-tail); // inverse rot
+        ctx.beginPath(); 
+        ctx.moveTo(0,0); 
+        ctx.quadraticCurveTo(-10, -10, -15, -5); // flipped control points
+        ctx.stroke();
+        ctx.restore();
+        
         ctx.restore();
     }
+
     function drawMouse(ctx, m) {
         ctx.save(); ctx.translate(m.x, m.y);
         ctx.fillStyle = "#95a5a6"; ctx.beginPath(); ctx.ellipse(0, 0, 5, 3, 0, 0, Math.PI*2); ctx.fill();
@@ -764,6 +1195,7 @@
         let m = Math.floor((gameState.time * 24 * 60) % 60); 
         document.getElementById('clock-display').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`; 
         document.getElementById('stamina-bar').style.width = gameState.player.stamina + '%'; 
+        document.getElementById('hydration-bar').style.width = gameState.player.hydration + '%';
         document.getElementById('season-display').innerText = seasons[gameState.seasonIndex].name;
     }
 
@@ -787,10 +1219,27 @@
     window.addEventListener('keydown', e => { if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault(); if(e.code === 'KeyW') keys.w = true; if(e.code === 'KeyA') keys.a = true; if(e.code === 'KeyS') keys.s = true; if(e.code === 'KeyD') keys.d = true; if(e.key === 'Shift') keys.Shift = true; if(e.code === 'Space') keys.Space = true; if(e.code === 'ArrowUp') keys.ArrowUp = true; if(e.code === 'ArrowDown') keys.ArrowDown = true; if(e.code === 'ArrowLeft') keys.ArrowLeft = true; if(e.code === 'ArrowRight') keys.ArrowRight = true; if(e.code === 'KeyQ' || e.code === 'KeyX') interact(); });
     window.addEventListener('keyup', e => { if(e.code === 'KeyW') keys.w = false; if(e.code === 'KeyA') keys.a = false; if(e.code === 'KeyS') keys.s = false; if(e.code === 'KeyD') keys.d = false; if(e.key === 'Shift') keys.Shift = false; if(e.code === 'Space') keys.Space = false; if(e.code === 'ArrowUp') keys.ArrowUp = false; if(e.code === 'ArrowDown') keys.ArrowDown = false; if(e.code === 'ArrowLeft') keys.ArrowLeft = false; if(e.code === 'ArrowRight') keys.ArrowRight = false; });
 
-    window.startGame = startGame; window.toggleSound = toggleSound; window.dropItem = dropItem; window.openCustomize = openCustomize; window.openShop = openShop; window.toggleTrainingMenu = toggleTrainingMenu; window.changeZoom = changeZoom; window.commandFoal = commandFoal; window.handleMobileJump = handleMobileJump; window.interact = interact; window.closeModals = closeModals; window.startMinigame = startMinigame; window.returnToFarm = returnToFarm; window.submitHighscore = submitHighscore; window.handleDressageInput = handleDressageInput; window.handleJumpInput = handleJumpInput;
+    // --- Global Export Block ---
+    window.startGame = startGame; 
+    window.toggleSound = toggleSound; 
+    window.dropItem = dropItem; 
+    window.openCustomize = openCustomize; 
+    window.openShop = openShop; 
+    window.toggleTrainingMenu = toggleTrainingMenu; 
+    window.changeZoom = changeZoom; 
+    window.commandFoal = commandFoal; 
+    window.handleMobileJump = handleMobileJump; 
+    window.interact = interact; 
+    window.closeModals = closeModals; 
+    window.startMinigame = startMinigame; 
+    window.returnToFarm = returnToFarm; 
+    window.submitHighscore = submitHighscore; 
+    window.handleDressageInput = handleDressageInput; 
+    window.handleJumpInput = handleJumpInput;
+    window.triggerFoalTrick = triggerFoalTrick;
 
     window.addEventListener('resize', resize); resize(); try { initUI(); } catch(e) { console.error("UI Init Error:", e); }
-    console.log("Pferdehof Deluxe v5.0: New Areas Added");
+    console.log("Pferdehof Deluxe v5.2: Wetter-Update (Sturm & Hitze)");
 </script>
 </body>
 </html>
