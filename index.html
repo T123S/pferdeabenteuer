@@ -126,9 +126,8 @@
         
         <!-- Context Hints -->
         <div id="groom-hint" class="context-hint">👋 Wischen zum Putzen!</div>
-        <!-- Garden Hint removed -->
         <div id="tourney-hint" class="context-hint">🏆 Zum Turnier (Leertaste oder Klick)</div>
-        <div id="calm-hint" class="context-hint" style="background:rgba(231,76,60,0.8);">😰 Pferd beruhigen!</div>
+        <div id="calm-hint" class="context-hint" style="background:rgba(231, 76, 60, 0.95); font-weight:bold;">😰 Pferd beruhigen!</div>
         <div id="drink-hint" class="context-hint" style="background:rgba(52,152,219,0.8);">💧 Trinken!</div>
 
         <div class="hud-right">
@@ -826,7 +825,13 @@
         
         // Show Calm Hint
         let panickedHorse = gameState.entities.horses.find(h => h.state === 'panic' && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 100);
-        document.getElementById('calm-hint').style.display = panickedHorse ? 'block' : 'none';
+        const calmHint = document.getElementById('calm-hint');
+        if(panickedHorse) {
+            calmHint.style.display = 'block';
+            calmHint.innerText = isTouchDevice ? "😰 Pferd beruhigen! (Button)" : "😰 Pferd beruhigen! (Drücke Q)";
+        } else {
+            calmHint.style.display = 'none';
+        }
 
         if(!gameState.inventory) { for(let i=0; i<gameState.entities.items.length; i++) { let it=gameState.entities.items[i]; if(Math.hypot(p.x-it.x, p.y-it.y)<40) { gameState.inventory=it.type; gameState.entities.items.splice(i,1); Sound.playPop(); updateUI(); break; } } } 
         
@@ -1229,7 +1234,36 @@
     }
     function handleMobileJump() { keys.Space=true; setTimeout(()=>keys.Space=false, 150); }
 
-    window.addEventListener('keydown', e => { if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault(); if(e.code === 'KeyW') keys.w = true; if(e.code === 'KeyA') keys.a = true; if(e.code === 'KeyS') keys.s = true; if(e.code === 'KeyD') keys.d = true; if(e.key === 'Shift') keys.Shift = true; if(e.code === 'Space') keys.Space = true; if(e.code === 'ArrowUp') keys.ArrowUp = true; if(e.code === 'ArrowDown') keys.ArrowDown = true; if(e.code === 'ArrowLeft') keys.ArrowLeft = true; if(e.code === 'ArrowRight') keys.ArrowRight = true; if(e.code === 'KeyQ' || e.code === 'KeyX') interact(); });
+    window.addEventListener('keydown', e => { 
+        if(["Space","ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)) e.preventDefault(); 
+        if(e.code === 'KeyW') keys.w = true; 
+        if(e.code === 'KeyA') keys.a = true; 
+        if(e.code === 'KeyS') keys.s = true; 
+        if(e.code === 'KeyD') keys.d = true; 
+        if(e.key === 'Shift') keys.Shift = true; 
+        if(e.code === 'Space') keys.Space = true; 
+        if(e.code === 'ArrowUp') keys.ArrowUp = true; 
+        if(e.code === 'ArrowDown') keys.ArrowDown = true; 
+        if(e.code === 'ArrowLeft') keys.ArrowLeft = true; 
+        if(e.code === 'ArrowRight') keys.ArrowRight = true; 
+        if(e.code === 'KeyQ' || e.code === 'KeyX') interact(); 
+        
+        // --- Cheat Code: Alt + N ---
+        if(e.altKey && e.code === 'KeyN') {
+            gameState.time += 0.25; // +6 Hours
+            if(gameState.time >= 1) {
+                gameState.time -= 1;
+                // Force Season Change on Day Wrap for Testing
+                let nextS = (gameState.seasonIndex + 1) % 4;
+                updateSeason(nextS);
+                // Force random weather switch (high chance for storm/rain for testing)
+                gameState.weatherTimer = 2900; 
+            }
+            createParticles(gameState.player.x, gameState.player.y, "⌛", 5);
+            Sound.playPop();
+            updateUI();
+        }
+    });
     window.addEventListener('keyup', e => { if(e.code === 'KeyW') keys.w = false; if(e.code === 'KeyA') keys.a = false; if(e.code === 'KeyS') keys.s = false; if(e.code === 'KeyD') keys.d = false; if(e.key === 'Shift') keys.Shift = false; if(e.code === 'Space') keys.Space = false; if(e.code === 'ArrowUp') keys.ArrowUp = false; if(e.code === 'ArrowDown') keys.ArrowDown = false; if(e.code === 'ArrowLeft') keys.ArrowLeft = false; if(e.code === 'ArrowRight') keys.ArrowRight = false; });
 
     // --- Global Export Block ---
@@ -1252,7 +1286,7 @@
     window.triggerFoalTrick = triggerFoalTrick;
 
     window.addEventListener('resize', resize); resize(); try { initUI(); } catch(e) { console.error("UI Init Error:", e); }
-    console.log("Pferdehof Deluxe v5.3: Cat Tail Fix & House Deco");
+    console.log("Pferdehof Deluxe v5.4: Hints & Cheats");
 </script>
 </body>
 </html>
