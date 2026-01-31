@@ -44,7 +44,7 @@
         button { pointer-events: auto; border: none; border-radius: 50px; font-family: 'Fredoka', sans-serif; font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.2); transition: transform 0.1s; }
         button:active { transform: translateY(4px); box-shadow: none; }
         .icon-btn { width: 45px; height: 45px; font-size: 24px; display: flex; justify-content: center; align-items: center; color: white; }
-        .btn-blue { background: #3498db; } .btn-purple { background: #9b59b6; } .btn-orange { background: #e67e22; } .btn-green { background: #2ecc71; } .btn-teal { background: #1abc9c; } .btn-red { background: #e74c3c; }
+        .btn-blue { background: #3498db; } .btn-purple { background: #9b59b6; } .btn-orange { background: #e67e22; } .btn-green { background: #2ecc71; } .btn-teal { background: #1abc9c; } .btn-red { background: #e74c3c; } .btn-yellow { background: #f1c40f; color: #333; }
         .big-btn { padding: 15px 40px; font-size: 20px; margin: 10px; color: white; width: 100%; max-width: 300px; }
         
         #drop-btn { background: #e74c3c; color: white; padding: 8px 15px; display: none; font-size: 16px; }
@@ -64,6 +64,9 @@
         #mobile-actions { position: absolute; bottom: 30px; right: 30px; display: flex; gap: 20px; pointer-events: auto; }
         .action-circle { width: 70px; height: 70px; border-radius: 50%; background: rgba(255,255,255,0.3); border: 2px solid white; color: white; font-size: 30px; display: flex; justify-content: center; align-items: center; }
         .action-circle:active { background: rgba(255,255,255,0.6); }
+
+        #wash-action { position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%); display: none; pointer-events: auto; }
+        #lead-action { position: absolute; bottom: 130px; right: 30px; display: none; pointer-events: auto; } /* Mobile Lead Button */
 
         #mobile-jump-only { position: absolute; bottom: 30px; left: 30px; display: none; pointer-events: auto; }
         .big-jump-btn { width: 100px; height: 100px; background: rgba(231, 76, 60, 0.6); border: 4px solid white; border-radius: 50%; color: white; font-size: 40px; display: flex; justify-content: center; align-items: center; }
@@ -91,6 +94,12 @@
 
         h3 { margin: 10px 0 5px; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
         #joystick-touch-zone { position: absolute; bottom: 30px; left: 30px; width: 160px; height: 160px; z-index: 20; border-radius: 50%; }
+
+        /* HELP TABLE */
+        .help-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        .help-table th, .help-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .help-table th { background-color: #f2f2f2; color: #333; }
+        .key-badge { background: #eee; border: 1px solid #ccc; border-radius: 4px; padding: 2px 6px; font-family: monospace; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -131,17 +140,25 @@
         <div id="drink-hint" class="context-hint" style="background:rgba(52,152,219,0.8);">💧 Trinken!</div>
 
         <div class="hud-right">
+            <button id="help-btn" class="icon-btn btn-yellow" onclick="toggleHelp()">❓</button>
             <button id="sound-btn" class="icon-btn btn-purple" onclick="toggleSound()">🔊</button>
             <button class="icon-btn btn-orange" onclick="openCustomize()">🎨</button>
             <button class="icon-btn btn-green" onclick="openShop()">🛒</button>
             <button id="train-btn" class="icon-btn btn-teal" style="display:none;" onclick="toggleTrainingMenu()">🎓</button>
-            <button class="icon-btn btn-blue" onclick="changeZoom(0.1)">➕</button>
-            <button class="icon-btn btn-blue" onclick="changeZoom(-0.1)">➖</button>
         </div>
         
         <div id="training-actions">
             <button class="train-btn" onclick="commandFoal('rear')">🦄 Steigen</button>
             <button class="train-btn" onclick="commandFoal('lie')">💤 Hinlegen</button>
+        </div>
+        
+        <div id="wash-action">
+            <button class="big-btn btn-blue" style="border: 3px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.3);" onclick="washNearestHorse()">🚿 Waschen (F)</button>
+        </div>
+
+        <!-- Mobile Lead Button -->
+        <div id="lead-action">
+            <button class="action-circle" style="background:#8e44ad; width:60px; height:60px;" onclick="toggleLeadMobile()">🔗</button>
         </div>
 
         <div id="foal-school-actions">
@@ -165,11 +182,47 @@
 
     <!-- Start / Level Screen -->
     <div id="level-screen" class="overlay" style="display:flex;">
-        <h1 style="color:#FFD700; font-size:40px; margin-bottom:10px;">Pferdehof Deluxe</h1>
-        <p>Garten, Tiere & Turniere!</p>
-        <p style="color:#f39c12; font-size:16px;">Neu: ⛈️ Sturm & ☀️ Hitze!</p>
+        <h1 style="color:#FFD700; font-size:40px; margin-bottom:10px;">Pferdehof Deluxe v6.1</h1>
+        <p>Pflege & Komfort Update!</p>
+        <p style="color:#f39c12; font-size:16px;">❓ Neues Hilfemenü | 🔗 Pferde führen</p>
         <div id="controls-hint" style="margin:20px 0; color:#ddd;"></div>
         <button onclick="startGame()" style="background:#27ae60; color:white; padding:15px 50px; font-size:24px;">Losreiten</button>
+    </div>
+
+    <!-- Help Screen -->
+    <div id="help-screen" class="overlay">
+        <div class="modal-content" style="width: 600px; max-width:95%;">
+            <div class="modal-close" onclick="closeModals()">×</div>
+            <h2>📖 Hilfe & Anleitung</h2>
+            
+            <h3>Bedeutung der Balken (Pferde)</h3>
+            <div style="display:flex; gap:10px; flex-direction:column; align-items:flex-start;">
+                <div style="display:flex; align-items:center; gap:10px;"><div style="width:20px; height:20px; background:#e74c3c;"></div> <strong>Hunger:</strong> Füttere Äpfel 🍎, Möhren 🥕 oder Heu 🌾.</div>
+                <div style="display:flex; align-items:center; gap:10px;"><div style="width:20px; height:20px; background:#3498db;"></div> <strong>Hygiene:</strong> Bringe das Pferd zum Waschplatz 🚿.</div>
+                <div style="display:flex; align-items:center; gap:10px;"><div style="width:20px; height:20px; background:#e91e63;"></div> <strong>Liebe:</strong> Bürste das Pferd 🧹 oder streichle es.</div>
+            </div>
+
+            <h3>Wie wasche ich ein Pferd?</h3>
+            <ol style="text-align:left; padding-left:20px;">
+                <li>Gehe nah an ein schmutziges Pferd heran.</li>
+                <li>Drücke <span class="key-badge">E</span> (oder Mobil: 🔗), um es zu <strong>führen</strong>.</li>
+                <li>Führe es auf die <strong>blauen Kacheln</strong> (Waschplatz) rechts vom Haus.</li>
+                <li>Drücke <span class="key-badge">F</span> (oder Button 🚿), um es zu waschen.</li>
+            </ol>
+
+            <h3>Steuerung</h3>
+            <table class="help-table">
+                <tr><th>Aktion</th><th>PC Tastatur</th><th>Mobil</th></tr>
+                <tr><td>Bewegen</td><td>WASD / Pfeiltasten</td><td>Joystick (Links)</td></tr>
+                <tr><td>Rennen</td><td>Shift halten</td><td>Joystick weit ziehen</td></tr>
+                <tr><td>Springen</td><td>Leertaste</td><td>🦘 Button</td></tr>
+                <tr><td>Interagieren / Ablegen</td><td>Q oder X</td><td>🖐️ Button</td></tr>
+                <tr><td>Pferd führen (An/Aus)</td><td>E (nah am Pferd)</td><td>🔗 Button</td></tr>
+                <tr><td>Waschen</td><td>F (auf Waschplatz)</td><td>🚿 Button</td></tr>
+            </table>
+
+            <button class="big-btn btn-green" onclick="closeModals()">Verstanden!</button>
+        </div>
     </div>
 
     <!-- Tournament Menu -->
@@ -265,7 +318,9 @@
         ArrowUp: false, 
         ArrowDown: false, 
         ArrowLeft: false, 
-        ArrowRight: false 
+        ArrowRight: false,
+        f: false,
+        e: false
     };
 
     // --- Audio Init ---
@@ -329,10 +384,11 @@
     var gameState = {
         mode: MODES.WORLD, running: false, level: 0, stars: 0, time: 0.25, dayDuration: 12000, weather: 'sunny', weatherTimer: 0, seasonIndex: 0, lightningTimer: 0,
         entities: { horses: [], items: [], decorations: [], dogs: [], ducks: [], chickens: [], leafPiles: [], cats: [], mice: [] },
-        terrain: { riverPoints: [], fields: [], trees: [], obstacles: [], fences: [], house: null, beds: [], shells: [], crystals: [] },
+        terrain: { riverPoints: [], fields: [], trees: [], obstacles: [], fences: [], house: null, beds: [], shells: [], crystals: [], washStation: null },
         inventory: null, particles: [], footprints: [], camX: 0, camY: 0, zoom: 1.0,
         player: { x: 600, y: 600, z: 0, vz: 0, vx: 0, vy: 0, speed: 6, maxStamina: 100, stamina: 100, hydration: 100, color: '#654321', maneColor: '#2c2c2c', flip: false, animFrame: 0, outfit: { saddlePad: '#ffffff', ribbon: null } },
         quest: { horse: null }, grooming: { active: false, progress: 0, targetHorse: null }, training: { active: false, targetFoal: null, menuOpen: false }, sleeping: false,
+        leadingHorseId: null, // NEW: ID of horse being led
         minigame: { active: false, score: 0, timer: 0, objects: [], opponents: [], state: 'warmup', countdown: 3, dressageOffset: {x:0, y:0}, feedbackText: null, foalSchool: { trickWanted: null, trickTimer: 0, foal: null } }
     };
 
@@ -385,10 +441,12 @@
         for(let x=0; x<=2500; x+=80) { gameState.terrain.fences.push({x:x, y:5}); gameState.terrain.fences.push({x:x, y:2000-5}); }
         for(let y=0; y<=2000; y+=60) { gameState.terrain.fences.push({x:5, y:y}); if(y<1000 || y>1400) gameState.terrain.fences.push({x:2500-5, y:y}); }
 
-        // House & Beds & Tournament Tent
+        // House & Beds & Tournament Tent & Wash Station
         gameState.terrain.house = {x: 300, y: 300, w: 160, h: 120};
         gameState.entities.decorations.push({x: 1000, y: 400, emoji: '🎪', type: 'tournament'});
-        // REMOVED GARDEN BEDS GENERATION
+        
+        // Wash Station
+        gameState.terrain.washStation = { x: 550, y: 250, w: 120, h: 120 };
 
         // Trees
         for(let i=0; i<150; i++) {
@@ -421,9 +479,17 @@
         for(let i=0; i<6; i++) {
             let px = Math.random()*2000, py = Math.random()*1500; px = Math.max(200, Math.min(2000, px)); py = Math.max(200, Math.min(1500, py));
             if(isNearRiver(px,py,100)) continue;
-            let horse = { id: i, x: px, y: py, color: colors[i%colors.length], flip: Math.random()>0.5, state: 'idle', timer: 0, tx: px, ty: py, anim: 0, want: Object.values(itemTypes)[Math.floor(Math.random()*5)], satisfied: false };
+            let horse = { 
+                id: i, x: px, y: py, color: colors[i%colors.length], flip: Math.random()>0.5, 
+                state: 'idle', timer: 0, tx: px, ty: py, anim: 0, 
+                want: Object.values(itemTypes)[Math.floor(Math.random()*5)], satisfied: false,
+                stats: { hunger: 50 + Math.random()*50, hygiene: 50 + Math.random()*50, love: 50 + Math.random()*50 } // New stats
+            };
             gameState.entities.horses.push(horse);
-            if(Math.random() > 0.7) gameState.entities.horses.push({ isFoal: true, parent: horse, x: px+20, y: py+20, color: horse.color, flip: horse.flip, anim: 0, trickTimer: 0 });
+            if(Math.random() > 0.7) gameState.entities.horses.push({ 
+                isFoal: true, parent: horse, x: px+20, y: py+20, color: horse.color, flip: horse.flip, anim: 0, trickTimer: 0,
+                stats: { hunger: 80, hygiene: 80, love: 80 }
+            });
         }
 
         const needyHorse = gameState.entities.horses.find(h => !h.isFoal && !h.satisfied);
@@ -510,12 +576,50 @@
     
     // Entity Updates
     function updateHorses() {
+        const ws = gameState.terrain.washStation;
+        const playerInWash = gameState.player.x > ws.x && gameState.player.x < ws.x + ws.w && gameState.player.y > ws.y && gameState.player.y < ws.y + ws.h;
+        let horseInWash = false;
+
+        // Toggle Lead Logic (once per keypress logic handled in event)
+        // If leading a horse, it follows player
+        
+        let showLeadBtn = false;
+        const p = gameState.player;
+
         gameState.entities.horses.forEach(h => {
+            // Stats Decay
+            if(!h.stats) h.stats = { hunger: 50, hygiene: 50, love: 50 };
+            
+            h.stats.hunger = Math.max(0, h.stats.hunger - 0.005);
+            let dirtRate = (gameState.weather === 'rain') ? 0.01 : ((gameState.weather === 'storm') ? 0.02 : 0.005);
+            h.stats.hygiene = Math.max(0, h.stats.hygiene - dirtRate);
+            h.stats.love = Math.max(0, h.stats.love - 0.002);
+            
+            // Check for potential lead target
+            if (Math.hypot(p.x - h.x, p.y - h.y) < 80) showLeadBtn = true;
+
+            // Follow Logic (Leading)
+            if (gameState.leadingHorseId === h.id) {
+                h.state = 'follow_player';
+                let dist = Math.hypot(p.x - h.x, p.y - h.y);
+                if (dist > 60) {
+                    let angle = Math.atan2(p.y - h.y, p.x - h.x);
+                    h.x += Math.cos(angle) * (p.speed * 0.9); // Slightly slower than player
+                    h.y += Math.sin(angle) * (p.speed * 0.9);
+                    h.flip = Math.cos(angle) < 0;
+                    h.anim += 0.2;
+                } else {
+                    h.anim = 0;
+                }
+            } else if (h.state === 'follow_player') {
+                 h.state = 'idle'; // Stop following if unlinked
+            }
+
             // Panic Logic for Storm
-            if(gameState.weather === 'storm' && h.state !== 'panic' && !h.isFoal) {
+            if(gameState.weather === 'storm' && h.state !== 'panic' && !h.isFoal && gameState.leadingHorseId !== h.id) {
                 if(Math.random() < 0.005) h.state = 'panic';
             }
-            if(gameState.weather !== 'storm' && h.state === 'panic') h.state = 'idle'; // Calm down if storm ends
+            if(gameState.weather !== 'storm' && h.state === 'panic') h.state = 'idle';
 
             if(h.isFoal && h.parent) {
                 let dist = Math.hypot(h.x - h.parent.x, h.y - h.parent.y);
@@ -524,22 +628,86 @@
             }
 
             if(h.state === 'panic') {
-                // Erratic fast movement
-                if(Math.random() < 0.1) {
-                    h.tx = h.x + (Math.random()-0.5)*500;
-                    h.ty = h.y + (Math.random()-0.5)*500;
-                }
+                if(Math.random() < 0.1) { h.tx = h.x + (Math.random()-0.5)*500; h.ty = h.y + (Math.random()-0.5)*500; }
                 let angle = Math.atan2(h.ty - h.y, h.tx - h.x);
-                h.x += Math.cos(angle) * 6; // Fast!
-                h.y += Math.sin(angle) * 6;
-                h.flip = Math.cos(angle) < 0;
-                h.anim += 0.5;
-                h.x = Math.max(100, Math.min(WORLD_W-100, h.x));
-                h.y = Math.max(100, Math.min(WORLD_H-100, h.y));
+                h.x += Math.cos(angle) * 6; h.y += Math.sin(angle) * 6;
+                h.flip = Math.cos(angle) < 0; h.anim += 0.5;
+                h.x = Math.max(100, Math.min(WORLD_W-100, h.x)); h.y = Math.max(100, Math.min(WORLD_H-100, h.y));
             }
             else if(h.state === 'idle') { h.timer++; if(h.timer > 100 + Math.random()*200) { h.state = 'walk'; h.tx = h.x + (Math.random()-0.5)*300; h.ty = h.y + (Math.random()-0.5)*300; h.tx = Math.max(100, Math.min(2500-100, h.tx)); h.ty = Math.max(100, Math.min(2000-100, h.ty)); h.timer = 0; } } 
-            else if(h.state === 'walk') { let angle = Math.atan2(h.ty - h.y, h.tx - h.x); h.x += Math.cos(angle) * 2; h.y += Math.sin(angle) * 2; h.flip = Math.cos(angle) < 0; h.anim += 0.15; if(Math.hypot(h.tx - h.x, h.ty - h.y) < 10) { h.state = 'idle'; h.anim = 0; } }
+            else if(h.state === 'walk') { 
+                let speed = 2; if(h.stats.hunger < 10) speed = 0.5; 
+                let angle = Math.atan2(h.ty - h.y, h.tx - h.x); h.x += Math.cos(angle) * speed; h.y += Math.sin(angle) * speed; h.flip = Math.cos(angle) < 0; h.anim += 0.15; if(Math.hypot(h.tx - h.x, h.ty - h.y) < 10) { h.state = 'idle'; h.anim = 0; } 
+            }
+
+            // Check if in wash station
+            if(h.x > ws.x && h.x < ws.x + ws.w && h.y > ws.y && h.y < ws.y + ws.h) horseInWash = true;
         });
+
+        // Wash UI
+        const washBtn = document.getElementById('wash-action');
+        if(playerInWash && horseInWash) {
+            washBtn.style.display = 'block';
+            if(keys.f) washNearestHorse();
+        } else {
+            washBtn.style.display = 'none';
+        }
+
+        // Mobile Lead UI
+        const leadBtn = document.getElementById('lead-action');
+        if (showLeadBtn && isTouchDevice) {
+            leadBtn.style.display = 'block';
+            leadBtn.querySelector('button').style.background = (gameState.leadingHorseId !== null) ? "#e74c3c" : "#8e44ad";
+            leadBtn.querySelector('button').innerText = (gameState.leadingHorseId !== null) ? "❌" : "🔗";
+        } else {
+            leadBtn.style.display = 'none';
+        }
+    }
+
+    function toggleLead() {
+        if (gameState.leadingHorseId !== null) {
+            // Stop leading
+            gameState.leadingHorseId = null;
+            Sound.playPop();
+            createParticles(gameState.player.x, gameState.player.y, "🔗", 3);
+        } else {
+            // Start leading nearest
+            const p = gameState.player;
+            let nearest = null; let minD = 100;
+            gameState.entities.horses.forEach(h => {
+                let d = Math.hypot(p.x - h.x, p.y - h.y);
+                if(d < minD) { minD = d; nearest = h; }
+            });
+            if (nearest) {
+                gameState.leadingHorseId = nearest.id;
+                Sound.playPop();
+                createParticles(nearest.x, nearest.y, "🔗", 3);
+            }
+        }
+    }
+
+    // Helper for mobile call
+    window.toggleLeadMobile = toggleLead;
+    
+    function washNearestHorse() {
+        const p = gameState.player;
+        let nearest = null; let minD = 200;
+        gameState.entities.horses.forEach(h => {
+            let d = Math.hypot(p.x - h.x, p.y - h.y);
+            if(d < minD) { minD = d; nearest = h; }
+        });
+
+        if(nearest && nearest.stats.hygiene < 100) {
+            nearest.stats.hygiene = Math.min(100, nearest.stats.hygiene + 20);
+            Sound.playSplash();
+            createParticles(nearest.x, nearest.y, "💧", 5);
+            createParticles(nearest.x, nearest.y - 30, "✨", 1);
+            if(nearest.stats.hygiene >= 100) {
+                 Sound.playSuccess();
+                 gameState.stars += 1;
+                 updateUI();
+            }
+        }
     }
 
     function updateDog() { gameState.entities.dogs.forEach(d => { let dist = Math.hypot(d.x - gameState.player.x, d.y - gameState.player.y); if(dist > 150) { let angle = Math.atan2(gameState.player.y - d.y, gameState.player.x - d.x); d.x += Math.cos(angle) * 4.5; d.y += Math.sin(angle) * 4.5; d.flip = Math.cos(angle) < 0; d.anim += 0.3; } else { d.anim += 0.1; } }); }
@@ -815,7 +983,46 @@
         dropItem(); 
     }
     
-    function dropItem() { if(!gameState.inventory) return; Sound.playPop(); const p = gameState.player; let dx = p.flip ? 60 : -60; gameState.entities.items.push({ x: p.x + dx, y: p.y, type: gameState.inventory }); gameState.inventory = null; createParticles(p.x, p.y, "💨", 5); updateUI(); if(gameState.quest.horse) updateQuestUI(); }
+    function dropItem() { 
+        if(!gameState.inventory) return; 
+        Sound.playPop(); const p = gameState.player; 
+        let dx = p.flip ? 60 : -60; 
+        
+        // Feed Horse Check
+        let fedHorse = null;
+        gameState.entities.horses.forEach(h => {
+             if(Math.hypot(p.x - h.x, p.y - h.y) < 80) fedHorse = h;
+        });
+
+        if(fedHorse) {
+            let eaten = false;
+            if((gameState.inventory.name === 'Apfel' || gameState.inventory.name === 'Möhre' || gameState.inventory.name === 'Heu')) {
+                fedHorse.stats.hunger = Math.min(100, fedHorse.stats.hunger + 30);
+                eaten = true;
+            } else if (gameState.inventory.name === 'Bürste') {
+                fedHorse.stats.love = Math.min(100, fedHorse.stats.love + 20);
+                createParticles(fedHorse.x, fedHorse.y, "❤️", 5);
+                // Don't consume brush? For now, we consume it to make buying relevant
+                eaten = true; 
+            }
+
+            if(eaten) {
+                createParticles(fedHorse.x, fedHorse.y, "😋", 3);
+                Sound.playSuccess();
+                gameState.inventory = null;
+                updateUI();
+                
+                // Also satisfy Quest if matches
+                if(gameState.quest.horse && gameState.quest.horse.id === fedHorse.id && !gameState.quest.horse.satisfied && gameState.quest.horse.want.name === gameState.inventory?.name) { // Need to re-check inventory logic here or adjust
+                     // Logic slight mismatch since inventory already cleared. Simplification:
+                     if(eaten && (fedHorse.want.name === 'Apfel' || fedHorse.want.name === 'Möhre')) completeQuest(fedHorse);
+                }
+                return;
+            }
+        }
+
+        gameState.entities.items.push({ x: p.x + dx, y: p.y, type: gameState.inventory }); gameState.inventory = null; createParticles(p.x, p.y, "💨", 5); updateUI(); if(gameState.quest.horse) updateQuestUI(); 
+    }
     function updateGarden() { /* Garden Removed */ }
     function toggleTrainingMenu() { let nearFoal = gameState.entities.horses.find(h => h.isFoal && Math.hypot(gameState.player.x - h.x, gameState.player.y - h.y) < 60); if(nearFoal) startTraining(nearFoal); }
     function startTraining(foal) { gameState.training.active = !gameState.training.active; gameState.training.targetFoal = foal; document.getElementById('training-actions').style.display = gameState.training.active ? 'flex' : 'none'; }
@@ -846,7 +1053,7 @@
 
         if(gameState.quest.horse && !gameState.quest.horse.satisfied) { let h=gameState.quest.horse; if(Math.hypot(p.x-h.x, p.y-h.y)<80) { if(gameState.inventory && gameState.inventory.name===h.want.name) completeQuest(h); } } 
     }
-    function completeQuest(h) { h.satisfied = true; gameState.inventory = null; gameState.stars += 1; Sound.playSuccess(); createParticles(h.x, h.y, "❤️", 10); updateUI(); updateQuestUI(); setTimeout(() => { const next = gameState.entities.horses.find(nh => !nh.isFoal && !nh.satisfied); gameState.quest.horse = next || null; updateQuestUI(); }, 2000); }
+    function completeQuest(h) { h.satisfied = true; /*Inv already null from dropItem/interact*/ gameState.stars += 1; Sound.playSuccess(); createParticles(h.x, h.y, "❤️", 10); updateUI(); updateQuestUI(); setTimeout(() => { const next = gameState.entities.horses.find(nh => !nh.isFoal && !nh.satisfied); gameState.quest.horse = next || null; updateQuestUI(); }, 2000); }
     function checkHouseSleep() { if(gameState.sleeping) return; const p=gameState.player; const h=gameState.terrain.house; if(h && p.x>h.x+60 && p.x<h.x+h.w-60 && p.y>h.y+h.h-40 && p.y<h.y+h.h+20) { gameState.sleeping=true; Sound.playSleep(); document.getElementById('sleep-overlay').style.opacity=1; setTimeout(() => { gameState.time=0.25; gameState.player.stamina=100; gameState.player.hydration=100; gameState.player.x+=20; updateUI(); setTimeout(() => { document.getElementById('sleep-overlay').style.opacity=0; gameState.sleeping=false; }, 1500); }, 1500); } }
 
     function draw() {
@@ -906,6 +1113,23 @@
         ctx.moveTo(0, WORLD_H); ctx.lineTo(WORLD_W, WORLD_H);
         for(let x=WORLD_W; x>=0; x-=50) { ctx.lineTo(x, 2000 + Math.sin(x/200)*100); }
         ctx.fill();
+        
+        // Wash Station Draw
+        if(gameState.terrain.washStation) {
+            const w = gameState.terrain.washStation;
+            ctx.fillStyle = "#81D4FA";
+            ctx.fillRect(w.x, w.y, w.w, w.h);
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(w.x, w.y, w.w, w.h);
+            // Tiles pattern
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = "rgba(255,255,255,0.5)";
+            for(let i=0; i<w.w; i+=30) { ctx.beginPath(); ctx.moveTo(w.x+i, w.y); ctx.lineTo(w.x+i, w.y+w.h); ctx.stroke(); }
+            for(let i=0; i<w.h; i+=30) { ctx.beginPath(); ctx.moveTo(w.x, w.y+i); ctx.lineTo(w.x+w.w, w.y+i); ctx.stroke(); }
+            ctx.font = "40px Arial";
+            ctx.fillText("🚿", w.x + w.w/2 - 20, w.y + w.h/2 + 10);
+        }
 
         for(let fp of gameState.footprints) { ctx.fillStyle = `rgba(0,0,0,${Math.min(0.2, fp.age/500)})`; ctx.beginPath(); ctx.ellipse(fp.x, fp.y+45, 10, 5, 0, 0, Math.PI*2); ctx.fill(); }
 
@@ -915,8 +1139,6 @@
             ctx.lineWidth = 120; ctx.strokeStyle = season.riverColor; ctx.beginPath(); gameState.terrain.riverPoints.forEach((p,i)=>i==0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)); ctx.stroke();
         }
         
-        // Removed Garden Beds Draw
-
         ctx.fillStyle = "#8d6e63"; gameState.terrain.fences.forEach(f => { ctx.beginPath(); ctx.rect(f.x-5, f.y-10, 10, 20); ctx.fill(); });
         gameState.entities.decorations.forEach(d => { ctx.font = d.type==='tournament'?"80px Arial":"40px Arial"; ctx.fillText(d.emoji, d.x, d.y); });
         ctx.font = "20px Arial"; gameState.entities.leafPiles.forEach(l => { ctx.fillText("🍂", l.x, l.y); });
@@ -949,12 +1171,44 @@
                 let rot = 0; let ty = 0; if(obj.trick==='rear') { rot = -0.4; ty = -20; } if(obj.trick==='lie') { rot = Math.PI/2; ty = 30; }
                 ctx.save(); if(obj.trick) ctx.translate(obj.x, obj.y); if(rot!==0) ctx.rotate(rot); if(obj.trick) ctx.translate(-obj.x, -obj.y + ty);
                 drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, false, obj.anim||0, obj.state==='walk'||obj.state==='panic', 0, obj.isFoal?0.6:1);
+                
+                // Draw Dirt if Hygiene low
+                if(obj.stats && obj.stats.hygiene < 60) {
+                     ctx.fillStyle = "rgba(101, 67, 33, 0.5)"; // Brown dirt
+                     for(let k=0; k<5; k++) {
+                         ctx.beginPath();
+                         ctx.arc((Math.random()-0.5)*30, -30 + (Math.random()-0.5)*20, 5, 0, Math.PI*2);
+                         ctx.fill();
+                     }
+                }
+
                 ctx.restore();
                 if(obj.state === 'panic') {
                     ctx.font = "30px Arial"; ctx.fillText("⚡", obj.x, obj.y - 70);
                 }
+                
+                // Draw Stats Bars if close
+                if(Math.hypot(gameState.player.x - obj.x, gameState.player.y - obj.y) < 150) {
+                    let by = -80;
+                    if(obj.isFoal) by = -60;
+                    drawStatBar(ctx, obj.x - 20, obj.y + by, obj.stats.hunger, "#e74c3c"); // Red = Hunger (actually need food, so low is bad, bar shows fullness)
+                    drawStatBar(ctx, obj.x - 20, obj.y + by - 8, obj.stats.hygiene, "#3498db"); // Blue = Clean
+                    drawStatBar(ctx, obj.x - 20, obj.y + by - 16, obj.stats.love, "#e91e63"); // Pink = Love
+                }
+
+                // Lead rope logic
+                if (gameState.leadingHorseId === obj.id) {
+                     const p = gameState.player;
+                     ctx.strokeStyle = "#8e44ad";
+                     ctx.lineWidth = 3;
+                     ctx.beginPath();
+                     ctx.moveTo(p.x, p.y - 20);
+                     ctx.quadraticCurveTo((p.x+obj.x)/2, (p.y+obj.y)/2 + 20, obj.x, obj.y - 30);
+                     ctx.stroke();
+                }
+
                 if(gameState.quest.horse && obj.id === gameState.quest.horse.id && !obj.satisfied) {
-                     ctx.save(); let bounce = Math.sin(Date.now()/200) * 5; ctx.translate(obj.x, obj.y - 80 + bounce); ctx.fillStyle = "white"; ctx.beginPath(); ctx.ellipse(0, 0, 30, 25, 0, 0, Math.PI*2); ctx.fill(); ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "black"; ctx.fillText(obj.want.emoji, 0, 0); ctx.restore();
+                     ctx.save(); let bounce = Math.sin(Date.now()/200) * 5; ctx.translate(obj.x, obj.y - 100 + bounce); ctx.fillStyle = "white"; ctx.beginPath(); ctx.ellipse(0, 0, 30, 25, 0, 0, Math.PI*2); ctx.fill(); ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillStyle = "black"; ctx.fillText(obj.want.emoji, 0, 0); ctx.restore();
                 }
             }
             if(obj.type === 'dog') drawDog(ctx, obj);
@@ -976,6 +1230,14 @@
         // Lightning Flash
         document.getElementById('storm-overlay').style.opacity = (gameState.lightningTimer > 0) ? 0.8 : 0;
     }
+    
+    function drawStatBar(ctx, x, y, val, color) {
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(x, y, 40, 6);
+        ctx.fillStyle = color;
+        ctx.fillRect(x+1, y+1, 38 * (val/100), 4);
+    }
+
     function drawRace() { ctx.fillStyle = "#e67e22"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.save(); ctx.translate(100 - gameState.player.x, 0); ctx.fillStyle = "#d35400"; ctx.fillRect(0, 100, 5000, 10); ctx.fillRect(0, 600, 5000, 10); ctx.fillStyle = "white"; for(let i=0; i<10; i++) { ctx.fillRect(5000, 100 + i*50, 20, 20); ctx.fillStyle = ctx.fillStyle==="#000"?"#fff":"#000"; } for(let o of gameState.minigame.objects) { if(o.type === 'hay') ctx.fillStyle = "#f1c40f"; else ctx.fillStyle = "#555"; ctx.fillRect(o.x, o.y, o.w, o.h); if(o.type === 'hay') { ctx.strokeStyle = "#d4ac0d"; ctx.lineWidth=2; ctx.strokeRect(o.x, o.y, o.w, o.h); ctx.beginPath(); ctx.moveTo(o.x+5, o.y+5); ctx.lineTo(o.x+o.w-5, o.y+o.h-5); ctx.stroke(); } } for(let op of gameState.minigame.opponents) { drawRealisticHorse(ctx, op.x, op.y, op.color, false, false, (op.animFrame||0), true, 0, 1); } drawRealisticHorse(ctx, gameState.player.x, gameState.player.y, gameState.player.color, false, true, gameState.player.animFrame, true, 0, 1); ctx.restore(); }
     function drawJump() { ctx.fillStyle = "#27ae60"; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.save(); ctx.translate(100 - gameState.player.x, 0); ctx.fillStyle = "#c0392b"; ctx.fillRect(0, 480, 4500, 40); for(let f of gameState.minigame.objects) { ctx.fillStyle = f.cleared ? "#2ecc71" : "#fff"; ctx.fillRect(f.x, 400, 20, 100); ctx.fillStyle = "red"; ctx.fillRect(f.x, 400, 20, 10); } drawRealisticHorse(ctx, gameState.player.x, gameState.player.y, gameState.player.color, false, true, gameState.player.animFrame, true, gameState.player.z, 1); ctx.restore(); }
     function drawDressage() { ctx.fillStyle = "#8e44ad"; ctx.fillRect(0,0,canvas.width,canvas.height); let targetY = canvas.height - 100; ctx.lineWidth = 8; ctx.strokeStyle = "#f1c40f"; ctx.beginPath(); ctx.arc(canvas.width/2, targetY, 45, 0, Math.PI*2); ctx.stroke(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(canvas.width/2, targetY, 48, 0, Math.PI*2); ctx.stroke(); ctx.textAlign = "center"; for(let a of gameState.minigame.objects) { ctx.font = "40px Arial"; ctx.fillStyle = a.hit ? "transparent" : "white"; let symbol = a.key === 'ArrowUp' ? '⬆️' : (a.key === 'ArrowDown' ? '⬇️' : (a.key==='ArrowLeft'?'⬅️':'➡️')); ctx.fillText(symbol, canvas.width/2, a.y); } if(gameState.minigame.feedbackText && gameState.minigame.feedbackText.alpha > 0) { ctx.font = "bold 60px Fredoka"; ctx.fillStyle = `rgba(255,255,255,${gameState.minigame.feedbackText.alpha})`; ctx.fillText(gameState.minigame.feedbackText.text, canvas.width/2, gameState.minigame.feedbackText.y); gameState.minigame.feedbackText.alpha -= 0.05; gameState.minigame.feedbackText.y -= 2; } let offX = gameState.minigame.dressageOffset.x; let offY = gameState.minigame.dressageOffset.y; let flip = false; if(offX < -10) flip = true; drawRealisticHorse(ctx, canvas.width/2 + offX, canvas.height/2 + 50 + offY, gameState.player.color, flip, true, gameState.player.animFrame, false, gameState.player.z, 1.2); }
@@ -1210,6 +1472,7 @@
     function closeModals() { document.querySelectorAll('.overlay').forEach(el => el.style.display = 'none'); }
     function openCustomize() { document.getElementById('customize-modal').style.display='flex'; updateCustomizeUI(); }
     function openShop() { document.getElementById('shop-modal').style.display='flex'; document.getElementById('shop-stars').innerText=gameState.stars; }
+    function toggleHelp() { document.getElementById('help-screen').style.display='flex'; }
     function updateCustomizeUI() { const setup = (id, list, curr, setter) => { const c=document.getElementById(id); c.innerHTML=''; list.forEach(val => { let d=document.createElement('div'); d.className='color-swatch'+(curr===val?' selected':''); d.style.background=val||'#ccc'; d.onclick=()=>{setter(val);Sound.playPop();updateCustomizeUI();}; c.appendChild(d); }); }; setup('coat-colors', ['#654321','#212121','#eeeeee','#d7ccc8'], gameState.player.color, v=>gameState.player.color=v); setup('mane-colors', ['#2c2c2c','#eeeeee','#8B4513'], gameState.player.maneColor, v=>gameState.player.maneColor=v); setup('pad-colors', ['#ffffff','#e74c3c','#3498db','#f1c40f'], gameState.player.outfit.saddlePad, v=>gameState.player.outfit.saddlePad=v); setup('ribbon-colors', [null,'#e74c3c','#3498db'], gameState.player.outfit.ribbon, v=>gameState.player.outfit.ribbon=v); }
     function initShop() { const grid = document.getElementById('shop-grid'); grid.innerHTML = ""; shopItems.forEach(item => { let div = document.createElement('div'); div.className = 'shop-item'; div.innerHTML = `<span style="font-size:30px">${item.emoji}</span><b>${item.name}</b><span>⭐ ${item.cost}</span>`; div.onclick = () => buyItem(item); grid.appendChild(div); }); }
     function buyItem(item) { 
@@ -1246,6 +1509,16 @@
         if(e.code === 'ArrowDown') keys.ArrowDown = true; 
         if(e.code === 'ArrowLeft') keys.ArrowLeft = true; 
         if(e.code === 'ArrowRight') keys.ArrowRight = true; 
+        if(e.code === 'KeyF') keys.f = true;
+        
+        // --- Single Toggle Key Logic for E ---
+        if(e.code === 'KeyE') {
+            if(!keys.e) { // prevent repeat
+                toggleLead();
+                keys.e = true;
+            }
+        }
+
         if(e.code === 'KeyQ' || e.code === 'KeyX') interact(); 
         
         // --- Cheat Code: Alt + N ---
@@ -1253,18 +1526,19 @@
             gameState.time += 0.25; // +6 Hours
             if(gameState.time >= 1) {
                 gameState.time -= 1;
-                // Force Season Change on Day Wrap for Testing
                 let nextS = (gameState.seasonIndex + 1) % 4;
                 updateSeason(nextS);
-                // Force random weather switch (high chance for storm/rain for testing)
                 gameState.weatherTimer = 2900; 
             }
+            // Cheat decays stats to test mechanics
+            gameState.entities.horses.forEach(h => { if(h.stats) { h.stats.hunger-=20; h.stats.hygiene-=20; } });
+            
             createParticles(gameState.player.x, gameState.player.y, "⌛", 5);
             Sound.playPop();
             updateUI();
         }
     });
-    window.addEventListener('keyup', e => { if(e.code === 'KeyW') keys.w = false; if(e.code === 'KeyA') keys.a = false; if(e.code === 'KeyS') keys.s = false; if(e.code === 'KeyD') keys.d = false; if(e.key === 'Shift') keys.Shift = false; if(e.code === 'Space') keys.Space = false; if(e.code === 'ArrowUp') keys.ArrowUp = false; if(e.code === 'ArrowDown') keys.ArrowDown = false; if(e.code === 'ArrowLeft') keys.ArrowLeft = false; if(e.code === 'ArrowRight') keys.ArrowRight = false; });
+    window.addEventListener('keyup', e => { if(e.code === 'KeyW') keys.w = false; if(e.code === 'KeyA') keys.a = false; if(e.code === 'KeyS') keys.s = false; if(e.code === 'KeyD') keys.d = false; if(e.key === 'Shift') keys.Shift = false; if(e.code === 'Space') keys.Space = false; if(e.code === 'ArrowUp') keys.ArrowUp = false; if(e.code === 'ArrowDown') keys.ArrowDown = false; if(e.code === 'ArrowLeft') keys.ArrowLeft = false; if(e.code === 'ArrowRight') keys.ArrowRight = false; if(e.code === 'KeyF') keys.f = false; if(e.code === 'KeyE') keys.e = false; });
 
     // --- Global Export Block ---
     window.startGame = startGame; 
@@ -1284,9 +1558,12 @@
     window.handleDressageInput = handleDressageInput; 
     window.handleJumpInput = handleJumpInput;
     window.triggerFoalTrick = triggerFoalTrick;
+    window.washNearestHorse = washNearestHorse;
+    window.toggleLeadMobile = toggleLeadMobile;
+    window.toggleHelp = toggleHelp;
 
     window.addEventListener('resize', resize); resize(); try { initUI(); } catch(e) { console.error("UI Init Error:", e); }
-    console.log("Pferdehof Deluxe v5.4: Hints & Cheats");
+    console.log("Pferdehof Deluxe v6.1: Help Update");
 </script>
 </body>
 </html>
