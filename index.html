@@ -182,9 +182,9 @@
 
     <!-- Start / Level Screen -->
     <div id="level-screen" class="overlay" style="display:flex;">
-        <h1 style="color:#FFD700; font-size:40px; margin-bottom:10px;">Pferdehof Deluxe v6.2</h1>
-        <p>Pflege-Detail Update!</p>
-        <p style="color:#f39c12; font-size:16px;">🚿 Schmutz | 😢 Trauer | 〰️ Hunger</p>
+        <h1 style="color:#FFD700; font-size:40px; margin-bottom:10px;">Pferdehof Deluxe v6.6</h1>
+        <p>Animations-Update</p>
+        <p style="color:#f39c12; font-size:16px;">😊 Stabile Pferde-Richtung | 🏖️ Strand-Bug behoben</p>
         <div id="controls-hint" style="margin:20px 0; color:#ddd;"></div>
         <button onclick="startGame()" style="background:#27ae60; color:white; padding:15px 50px; font-size:24px;">Losreiten</button>
     </div>
@@ -401,8 +401,18 @@
             const updateJoy = (t) => { let dx = t.clientX - joy.baseX; let dy = t.clientY - joy.baseY; let dist = Math.hypot(dx,dy); if(dist>joy.radius) { let r=joy.radius/dist; dx*=r; dy*=r; } joy.stickX = joy.baseX+dx; joy.stickY = joy.baseY+dy; joy.dx = dx/joy.radius; joy.dy = dy/joy.radius; };
             joystickElement.addEventListener('touchstart', (e) => { e.preventDefault(); joy.active=true; joy.touchId=e.changedTouches[0].identifier; updateJoy(e.changedTouches[0]); }, {passive: false});
             joystickElement.addEventListener('touchmove', (e) => { e.preventDefault(); if (joy.active) { for (let t of e.changedTouches) { if (t.identifier === joy.touchId) updateJoy(t); } } }, {passive: false});
-            const end = (e) => { for (let t of e.changedTouches) { if (t.identifier === joy.touchId) { joy.active=false; joy.stickX=joy.baseX; joy.stickY=joy.baseY; joy.dx=0; joy.dy=0; joy.triggerReset=true; } } };
-            joystickElement.addEventListener('touchend', end); joystickElement.addEventListener('touchcancel', end); joystickElement.addEventListener('touchleave', end);
+            
+            // Fix: Global event listeners for touch end to prevent stuck joystick
+            const end = (e) => { 
+                for (let t of e.changedTouches) { 
+                    if (t.identifier === joy.touchId) { 
+                        joy.active=false; joy.stickX=joy.baseX; joy.stickY=joy.baseY; joy.dx=0; joy.dy=0; joy.triggerReset=true; 
+                    } 
+                } 
+            };
+            window.addEventListener('touchend', end); 
+            window.addEventListener('touchcancel', end); 
+            window.addEventListener('touchleave', end);
         }
         initShop();
         if(typeof __firebase_config !== 'undefined') {
@@ -420,6 +430,14 @@
     function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; joy.baseX = 30 + 160/2; joy.baseY = canvas.height - (30 + 160/2); if(!joy.active) { joy.stickX = joy.baseX; joy.stickY = joy.baseY; } }
     function startGame() { document.getElementById('level-screen').style.display = 'none'; if(soundCtx && soundCtx.state === 'suspended') soundCtx.resume(); generateWorld(); gameState.running = true; window.focus(); canvas.focus(); loop(); }
     document.addEventListener('mousedown', (e) => { if(gameState.running && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') { canvas.focus(); window.focus(); } });
+
+    // Fix: Clear keys on blur to prevent runaway
+    window.addEventListener('blur', () => {
+        keys.w = false; keys.a = false; keys.s = false; keys.d = false;
+        keys.ArrowUp = false; keys.ArrowDown = false; keys.ArrowLeft = false; keys.ArrowRight = false;
+        keys.Shift = false; keys.Space = false;
+        joy.active = false; joy.dx = 0; joy.dy = 0;
+    });
 
     function generateWorld() {
         gameState.mode = MODES.WORLD; gameState.time = 0.25; gameState.player.x = 600; gameState.player.y = 600; gameState.player.speed = 6; 
@@ -537,10 +555,16 @@
                 gameState.weatherTimer = 0; 
                 if(gameState.time < 0.1) { }
                 const r = Math.random(); 
-                if(r < 0.4) gameState.weather = 'sunny'; 
-                else if(r < 0.7) gameState.weather = 'rain'; 
-                else if(r < 0.8) gameState.weather = 'storm'; // 10% Storm
-                else gameState.weather = 'cloudy';
+                // Revised Weather Probabilities:
+                // Sunny: 0.0 - 0.5 (50%)
+                // Cloudy: 0.5 - 0.75 (25%)
+                // Rain: 0.75 - 0.98 (23%)
+                // Storm: 0.98 - 1.0 (2%) - Much Rare!
+                
+                if(r < 0.5) gameState.weather = 'sunny'; 
+                else if(r < 0.75) gameState.weather = 'cloudy';
+                else if(r < 0.98) gameState.weather = 'rain'; 
+                else gameState.weather = 'storm';
                 
                 if(seasons[gameState.seasonIndex].name === 'Winter' && gameState.weather === 'rain') gameState.weather = 'snow';
             }
@@ -587,13 +611,17 @@
         const p = gameState.player;
 
         gameState.entities.horses.forEach(h => {
-            // Stats Decay
+            // Stats Decay - SLOWER RATES
             if(!h.stats) h.stats = { hunger: 50, hygiene: 50, love: 50 };
             
-            h.stats.hunger = Math.max(0, h.stats.hunger - 0.005);
-            let dirtRate = (gameState.weather === 'rain') ? 0.01 : ((gameState.weather === 'storm') ? 0.02 : 0.005);
+            h.stats.hunger = Math.max(0, h.stats.hunger - 0.002); // Was 0.005
+            
+            // Slower dirt accumulation
+            let dirtRate = (gameState.weather === 'rain') ? 0.005 : ((gameState.weather === 'storm') ? 0.01 : 0.001); 
+            // Was Rain 0.01, Storm 0.02, Normal 0.005
+            
             h.stats.hygiene = Math.max(0, h.stats.hygiene - dirtRate);
-            h.stats.love = Math.max(0, h.stats.love - 0.002);
+            h.stats.love = Math.max(0, h.stats.love - 0.0008); // Was 0.002
             
             // Hunger Sounds & Visuals
             if(h.stats.hunger < 20 && Math.random() < 0.01) {
@@ -610,14 +638,38 @@
             if (gameState.leadingHorseId === h.id) {
                 h.state = 'follow_player';
                 let dist = Math.hypot(p.x - h.x, p.y - h.y);
-                if (dist > 60) {
+                let targetDist = 70; // Zielabstand
+                
+                if (dist > targetDist) {
                     let angle = Math.atan2(p.y - h.y, p.x - h.x);
-                    h.x += Math.cos(angle) * (p.speed * 0.9); // Slightly slower than player
-                    h.y += Math.sin(angle) * (p.speed * 0.9);
-                    h.flip = Math.cos(angle) < 0;
-                    h.anim += 0.2;
+                    
+                    // Calculate max speed (run if player runs) - Horse keeps up better now
+                    let isRunning = (keys.Shift || (joy.active && Math.hypot(joy.dx,joy.dy) > 0.9));
+                    let maxSpeed = isRunning ? p.speed * 1.8 : p.speed * 1.1; 
+
+                    // Smooth approach
+                    let moveStep = Math.min(maxSpeed, dist - targetDist);
+                    
+                    h.x += Math.cos(angle) * moveStep;
+                    h.y += Math.sin(angle) * moveStep;
+                    
+                    // Correct facing direction based on movement vector
+                    // Checks if horizontal movement component is significant enough to turn
+                    let dirX = Math.cos(angle);
+                    if (dirX < -0.1) h.flip = true;  // Face Left
+                    else if (dirX > 0.1) h.flip = false; // Face Right
+                    
+                    // Only animate if moving
+                    if(moveStep > 0.5) {
+                         h.anim += 0.2;
+                         h.state = 'walk'; // FORCE WALK STATE FOR ANIMATION
+                    } else {
+                         h.anim = 0;
+                         h.state = 'idle';
+                    }
                 } else {
                     h.anim = 0;
+                    h.state = 'idle';
                 }
             } else if (h.state === 'follow_player') {
                  h.state = 'idle'; // Stop following if unlinked
@@ -661,10 +713,12 @@
             washBtn.style.display = 'none';
         }
 
-        // Mobile Lead UI
+        // Mobile Lead Button UI Update
         const leadBtn = document.getElementById('lead-action');
         if (showLeadBtn && isTouchDevice) {
             leadBtn.style.display = 'block';
+            // Only show Red Cross if we are leading *THIS* specific horse or generally leading?
+            // Actually simple toggle logic: if leading ANY horse, button is X.
             leadBtn.querySelector('button').style.background = (gameState.leadingHorseId !== null) ? "#e74c3c" : "#8e44ad";
             leadBtn.querySelector('button').innerText = (gameState.leadingHorseId !== null) ? "❌" : "🔗";
         } else {
@@ -706,9 +760,9 @@
         });
 
         if(nearest) {
-            if(nearest.stats.hygiene >= 100) {
-                 // Already clean, no points
-                 createParticles(nearest.x, nearest.y, "🚫", 1);
+            // STRICT CHECK: Cannot wash if already full
+            if(nearest.stats.hygiene >= 99) { // Using 99 to be safe with float logic
+                 createParticles(nearest.x, nearest.y, "Sauber!", 1);
                  return;
             }
 
@@ -787,13 +841,24 @@
         let isWinter = seasons[gameState.seasonIndex].name === 'Winter';
         
         if(onRiver || inSea) {
-            if(isWinter && !inSea) { p.vx = p.vx * 0.99 + dx * 0.05; p.vy = p.vy * 0.99 + dy * 0.05; if(Math.hypot(p.vx, p.vy) > 0.5 && Math.random() < 0.05) Sound.playSlide(); } 
+            if(isWinter && !inSea) { 
+                // Ice physics (sliding)
+                p.vx = p.vx * 0.99 + dx * 0.05; 
+                p.vy = p.vy * 0.99 + dy * 0.05; 
+                if(Math.hypot(p.vx, p.vy) > 0.5 && Math.random() < 0.05) Sound.playSlide(); 
+            } 
             else { 
+                // Water physics (slog)
                 speed *= 0.3; 
-                p.vx = dx * speed; p.vy = dy * speed; 
+                p.vx = dx * speed; 
+                p.vy = dy * speed; 
                 if(Math.random() < 0.05 && (dx!=0 || dy!=0)) { Sound.playSplash(); createParticles(p.x, p.y, "💧", 1); } 
             }
-        } else { p.vx = dx * speed; p.vy = dy * speed; }
+        } else { 
+            // Normal land physics
+            p.vx = dx * speed; 
+            p.vy = dy * speed; 
+        }
         
         let isSprinting = (keys.Shift || (joy.active && Math.hypot(joy.dx,joy.dy) > 0.9));
         if(isSprinting && p.stamina > 0 && (dx!=0 || dy!=0)) { if((onRiver || inSea) && isWinter && !inSea) { p.vx*=1.02; p.vy*=1.02; } else { p.vx *= 1.6; p.vy *= 1.6; } p.stamina -= 0.5; } else { if(p.stamina < p.maxStamina) p.stamina += 0.2; }
@@ -1187,6 +1252,7 @@
             if(obj.type === 'horse') {
                 let rot = 0; let ty = 0; if(obj.trick==='rear') { rot = -0.4; ty = -20; } if(obj.trick==='lie') { rot = Math.PI/2; ty = 30; }
                 ctx.save(); if(obj.trick) ctx.translate(obj.x, obj.y); if(rot!==0) ctx.rotate(rot); if(obj.trick) ctx.translate(-obj.x, -obj.y + ty);
+                // Fix: Ensure proper walking state is considered for animation
                 drawRealisticHorse(ctx, obj.x, obj.y, obj.color, obj.flip, false, obj.anim||0, obj.state==='walk'||obj.state==='panic', 0, obj.isFoal?0.6:1);
                 
                 // Draw Dirt Logic
@@ -1593,7 +1659,7 @@
     window.toggleHelp = toggleHelp;
 
     window.addEventListener('resize', resize); resize(); try { initUI(); } catch(e) { console.error("UI Init Error:", e); }
-    console.log("Pferdehof Deluxe v6.2: Detail Update");
+    console.log("Pferdehof Deluxe v6.6: Fixes");
 </script>
 </body>
 </html>
